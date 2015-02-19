@@ -25,7 +25,7 @@
        (setq word (getword))
        (cond ((not word)
 	      (return nil))
-	     ((eq word 'eol)
+	     ((string-eol word)
 	      (return (nreverse res))))
        (setq neuron (gethash word *dictionary*))
        (cond ((null neuron)
@@ -46,6 +46,10 @@
   (or (eql c #\.)
       (eql c #\!)
       (eql c #\?)))
+
+(defun string-eol (s)
+  (and (eql 1 (length s))
+       (eol (char s 0))))
 
 (defun getword ()
 					; if no words, read a non-blank line
@@ -90,5 +94,5 @@
 
 
 
-(abc)
+;(abc)
 
