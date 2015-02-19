@@ -76,4 +76,12 @@
     (coerce (nreverse res) 'string)))
 
   
-  
+
+(defun main ()
+  (loop
+     (let (inp)
+       (setq inp (create-line))
+       (and (and (consp inp)
+		 (not (consp (cdr inp)))
+		 (string= "quit" (named-neuron-name (car inp))))
+	    (return)))))
