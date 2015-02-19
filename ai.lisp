@@ -32,7 +32,48 @@
 	      (setq neuron (make-named-neuron :name word))
 	      (setf (gethash word *dictionary*) neuron)))
        (setq res (cons neuron res)))))
-       
+
+(defparameter *input-line* "")
+(defparameter *current-position* 0)
+
+(defun isspace (c)
+  (or (eql c #\space)
+      (eql c #\tab)
+      (eql c #\return)
+      (eql c #\linefeed)))
+
+(defun eol (c)
+  (or (eql c #\.)
+      (eql c #\!)
+      (eql c #\?)))
+
+(defun getword ()
+					; if no words, read a non-blank line
+  (loop while (>= *current-position* (length *input-line*)) do
+       (setq *current-position* 0)
+       (setq *input-line* (string-downcase (read-line)))
+       (loop while (and (< *current-position* (length *input-line*))
+			(isspace (char *input-line* *current-position*))) do
+	    (incf *current-position*)))
+					; get all non-space characters
+  (let* ((c (char *input-line* *current-position*))
+	 (res (list c)))
+    (incf *current-position*)
+    (cond ((not (eol c))
+	   (loop while (and (< *current-position* (length *input-line*))
+			    (not (isspace (char *input-line* *current-position*)))
+			    (not (eol (char *input-line* *current-position*)))) do
+		(setq res (cons (char *input-line* *current-position*) res))
+		(incf *current-position*))))
+					; skip remainder of spaces for next time
+    (loop while (and (< *current-position* (length *input-line*))
+		     (isspace (char *input-line* *current-position*))) do
+	 (incf *current-position*))
+    (coerce (nreverse res) 'string)))
+
+  
+  
+	 
 
 
 (defun abc ()
