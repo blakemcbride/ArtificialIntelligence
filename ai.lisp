@@ -77,22 +77,3 @@
 
   
   
-	 
-
-
-(defun abc ()
-  (let (x)
-    (princ "prompt: ")
-    (finish-output)
-    (setq x (read-line))
-    (princ "XXXXX")
-    (terpri)
-    (princ x)
-    (terpri)
-    (princ "MMMMM")
-    (terpri)))
-
-
-
-;(abc)
-
