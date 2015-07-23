@@ -1,6 +1,11 @@
 
 ; Common Lisp version started on 2/16/15 by Blake McBride
 
+
+(defmacro add (var cell)
+  "Add cell to the beginning of the list contained in variable var"
+  `(setq ,var (cons ,cell ,var)))
+
 (defparameter *dictionary* (make-hash-table :test 'equal))
 
 (defparameter *next-neuron-id* 0)
@@ -34,7 +39,7 @@
        (cond ((null neuron)
 	      (setq neuron (make-named-neuron :name word))
 	      (setf (gethash word *dictionary*) neuron)))
-       (setq res (cons neuron res)))))
+       (add res neuron))))
 
 (defparameter *input-line* "")
 (defparameter *current-position* 0)
@@ -71,7 +76,7 @@
 	   (loop while (and (< *current-position* (length *input-line*))
 			    (not (isspace (char *input-line* *current-position*)))
 			    (not (eol (char *input-line* *current-position*)))) do
-		(setq res (cons (char *input-line* *current-position*) res))
+		(add res (char *input-line* *current-position*))
 		(incf *current-position*))))
 					; skip remainder of spaces for next time
     (loop while (and (< *current-position* (length *input-line*))
@@ -103,24 +108,17 @@
   "Create a new neuron to follow 'neuron' and return it"
   (connect neuron (make-neuron)))
 
-
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
   (let (active vn)
     (dolist (neuron inp)
-	 (let ((next-active (cons (new-next-neuron neuron) nil)))
-	   (setq vn nil) ; it would be better if vn were a fixed size array
-	   ; create extension neurons (ones that represent prior activity) and load up the neuron list (vn)
-	   (dolist (pn active)
-		(setq next-active (cons (new-next-neuron pn) next-active))
-		(setq vn (cons pn vn)))
-
-	   (dolist (pn vn)
-		(let ((nn (new-next-neuron neuron)))
-		  (setq next-active (cons nn next-active))
-		  (connect pn nn)))
-
-	   (setq active next-active)))))
+      (let ((next-active (cons (new-next-neuron neuron) nil)))
+	(dolist (pn active)
+	  (add next-active (new-next-neuron pn))
+	  (let ((nn (new-next-neuron neuron)))
+	    (add next-active nn)
+	    (connect pn nn)))
+	(setq active next-active)))))
 
 (defun dump-neuron (n level)
   (dotimes (var level)
