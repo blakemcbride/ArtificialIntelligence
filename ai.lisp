@@ -19,7 +19,7 @@
 (defstruct dendrite
   "A Dendrite"
   (neuron nil)
-  (weight 0 :type single-float))
+  (weight 0.0 :type single-float))
 
 (defun create-line ()
   "Returns a list of named neurons"
