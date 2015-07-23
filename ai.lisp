@@ -10,6 +10,10 @@
 
 (defparameter *next-neuron-id* 0)
 
+(defun reset ()
+  (setq *dictionary* (make-hash-table :test 'equal))
+  (setq *next-neuron-id* 0))
+
 (defstruct neuron
   "An unnamed neuron"
   (threshold 0 :type fixnum)
@@ -104,9 +108,9 @@
 	  (cons den (neuron-axon prior-neuron)))
     next-neuron))
 
-(defun new-next-neuron (neuron)
+(defmacro new-next-neuron (neuron)
   "Create a new neuron to follow 'neuron' and return it"
-  (connect neuron (make-neuron)))
+  `(connect ,neuron (make-neuron)))
 
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
