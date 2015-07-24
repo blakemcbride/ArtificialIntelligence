@@ -14,8 +14,7 @@
 
 (defun main ()
   (loop
-     (let (inp)
-       (setq inp (create-line))
+     (let ((inp (create-line)))
        (and (and (consp inp)
 		 (not (consp (cdr inp)))
 		 (or (string= "quit" (named-neuron-name (car inp)))
@@ -26,10 +25,10 @@
 
 (defun connect (prior-neuron next-neuron)
   "Connect two neurons with a dendrite, return next-neuron"
-  (let ((den (make-dendrite :neuron next-neuron)))
-    (setf (neuron-axon prior-neuron)
-	  (cons den (neuron-axon prior-neuron)))
-    next-neuron))
+  (setf (neuron-axon prior-neuron)
+	(cons (make-dendrite :neuron next-neuron)
+	      (neuron-axon prior-neuron)))
+  next-neuron)
 
 (defmacro new-next-neuron (neuron)
   "Create a new neuron to follow 'neuron' and return it"
@@ -37,13 +36,11 @@
 
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
-  (let (active vn)
+  (let (active)
     (dolist (neuron inp)
       (let ((next-active (cons (new-next-neuron neuron) nil)))
 	(dolist (pn active)
 	  (add next-active (new-next-neuron pn))
-	  (let ((nn (new-next-neuron neuron)))
-	    (add next-active nn)
-	    (connect pn nn)))
+	  (add next-active (connect pn (new-next-neuron neuron))))
 	(setq active next-active)))))
 
