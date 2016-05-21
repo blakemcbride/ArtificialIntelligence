@@ -6,6 +6,7 @@
 	   "RESET"
 	   "NEURON"
 	   "NEURON-AXON"
+	   "NEURON-EXTENDER"
 	   "NAMED-NEURON"
 	   "NAMED-NEURON-NAME"
 	   "MAKE-NEURON"
@@ -30,7 +31,8 @@
   (threshold 0 :type fixnum)
   (current-value 0 :type fixnum)
   (id (incf *next-neuron-id*) :type fixnum :read-only) ; only used for debugging purposes
-  (axon nil))
+  (extender nil) ; a particular neuron that acts as an extender to this neuron
+  (axon nil)) ; dendrite - linked list of weighted output neurons (including the extender)
 
 (defstruct (named-neuron (:include neuron))
   "An named neuron - just adds name to a regular neuron"
@@ -48,8 +50,12 @@
       (format t "~d (~a)~%"
 	      (neuron-id n)
 	      (named-neuron-name n))
-      (format t "~d~%"
-	     (neuron-id n)))
+      (if (neuron-extender n)
+	  (format t "~d (~d)~%"
+		  (neuron-id n)
+		  (neuron-id (neuron-extender n)))
+	  (format t "~d~%"
+		  (neuron-id n))))
   (dolist (den (neuron-axon n))
     (dump-neuron (dendrite-neuron den) (1+ level))))
   

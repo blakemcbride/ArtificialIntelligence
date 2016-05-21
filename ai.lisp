@@ -23,24 +23,26 @@
        (build-structure inp)))
   (dump-dictionary))
 
-(defun connect (prior-neuron next-neuron)
+(defun connect (prior-neuron next-neuron &optional is-extender)
   "Connect two neurons with a dendrite, return next-neuron"
   (setf (neuron-axon prior-neuron)
 	(cons (make-dendrite :neuron next-neuron)
 	      (neuron-axon prior-neuron)))
+  (if is-extender
+       (setf (neuron-extender prior-neuron) next-neuron))
   next-neuron)
 
-(defmacro new-next-neuron (neuron)
+(defmacro new-next-neuron (neuron &optional is-extender)
   "Create a new neuron to follow 'neuron' and return it"
-  `(connect ,neuron (make-neuron)))
+  `(connect ,neuron (make-neuron) ,is-extender))
 
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
   (let (active)
     (dolist (neuron inp)
-      (let ((next-active (cons (new-next-neuron neuron) nil)))
+      (let ((next-active (cons (new-next-neuron neuron t) nil)))
 	(dolist (pn active)
-	  (add next-active (new-next-neuron pn))
+	  (add next-active (new-next-neuron pn t))
 	  (add next-active (connect pn (new-next-neuron neuron))))
 	(setq active next-active)))))
 
