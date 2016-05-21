@@ -36,13 +36,19 @@
   "Create a new neuron to follow 'neuron' and return it"
   `(connect ,neuron (make-neuron) ,is-extender))
 
+(defmacro get-extender (neuron)
+  "Re-use an existing extender neuron to follow 'neuron' or create a new one if necessary.
+   Return the extender neuron."
+  `(or (neuron-extender ,neuron)
+       (new-next-neuron ,neuron t)))
+
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
   (let (active)
     (dolist (neuron inp)
-      (let ((next-active (cons (new-next-neuron neuron t) nil)))
+      (let ((next-active (cons (get-extender neuron) nil)))
 	(dolist (pn active)
-	  (add next-active (new-next-neuron pn t))
+	  (add next-active (get-extender pn))
 	  (add next-active (connect pn (new-next-neuron neuron))))
 	(setq active next-active)))))
 

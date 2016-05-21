@@ -47,18 +47,24 @@
   (dotimes (var level)
     (princ "    "))
   (if (named-neuron-p n)
-      (format t "~d (~a)~%"
-	      (neuron-id n)
-	      (named-neuron-name n))
       (if (neuron-extender n)
-	  (format t "~d (~d)~%"
+	  (format t "~d (~a) (E-~d)~%"
+		  (neuron-id n)
+		  (named-neuron-name n)
+		  (neuron-id (neuron-extender n)))
+	  (format t "~d (~a)~%"
+		  (neuron-id n)
+		  (named-neuron-name n)))
+      (if (neuron-extender n)
+	  (format t "~d (E-~d)~%"
 		  (neuron-id n)
 		  (neuron-id (neuron-extender n)))
 	  (format t "~d~%"
 		  (neuron-id n))))
   (dolist (den (neuron-axon n))
     (dump-neuron (dendrite-neuron den) (1+ level))))
-  
+
 (defun dump-dictionary ()
   (loop for value being the hash-values of *dictionary*
-       do (dump-neuron value 0)))
+     do (dump-neuron value 0)))
+
