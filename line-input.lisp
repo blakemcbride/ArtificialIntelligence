@@ -1,7 +1,7 @@
 
 (defpackage "line-input"
   (:use "COMMON-LISP")
-  (:export "CREATE-LINE"))
+  (:export "CREATE-LINE" "ADD"))
 (in-package "line-input")
 (provide "line-input")
 

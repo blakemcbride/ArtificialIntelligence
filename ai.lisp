@@ -8,10 +8,6 @@
 (require "line-input")
 (use-package "line-input")
 
-(defmacro add (var cell)
-  "Add cell to the beginning of the list contained in variable var"
-  `(setq ,var (cons ,cell ,var)))
-
 (defun main ()
   (reset)
   (loop
