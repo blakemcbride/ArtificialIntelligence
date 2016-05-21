@@ -39,6 +39,21 @@
   `(or (neuron-extender ,neuron)
        (new-next-neuron ,neuron t)))
 
+(defun connects-to (a b)
+  "Does neuron a directly connect to neuron b?"
+  (dolist (den (neuron-axon a))
+    (if (eq b (dendrite-neuron den))
+	(return t))))
+
+(defun find-connecting-neuron (a b)
+  "Find a neuron that both neuron a and b already connect to."
+  (let ((extender (neuron-extender a)))
+    (dolist (den (neuron-axon a))
+      (let ((n (dendrite-neuron den)))
+	(if (and (not (eq n extender))
+		 (connects-to b n))
+	    (return n))))))
+
 (defun build-structure (inp)
   "This takes our input list and generates 'every possible combination' into our net"
   (let (active)
@@ -46,6 +61,7 @@
       (let ((next-active (cons (get-extender neuron) nil)))
 	(dolist (pn active)
 	  (add next-active (get-extender pn))
-	  (add next-active (connect pn (new-next-neuron neuron))))
+	  (add next-active (or (find-connecting-neuron pn neuron)
+			       (connect pn (new-next-neuron neuron)))))
 	(setq active next-active)))))
 
