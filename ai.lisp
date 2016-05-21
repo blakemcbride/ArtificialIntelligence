@@ -13,6 +13,7 @@
   `(setq ,var (cons ,cell ,var)))
 
 (defun main ()
+  (reset)
   (loop
      (let ((inp (create-line)))
        (and (and (consp inp)

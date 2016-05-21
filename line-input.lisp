@@ -8,12 +8,17 @@
 (require "data-structures")
 (use-package "data-structures")
 
+(defparameter *input-line* "")
+(defparameter *current-position* 0)
+
 (defmacro add (var cell)
   "Add cell to the beginning of the list contained in variable var"
   `(setq ,var (cons ,cell ,var)))
 
 (defun create-line ()
   "Returns a list of named neurons"
+  (setq *input-line* "")
+  (setq *current-position* 0)
   (let (res)
     (loop
        (let ((word (getword)))
@@ -26,9 +31,6 @@
 		  (setq neuron (make-named-neuron :name word))
 		  (setf (gethash word *dictionary*) neuron)))
 	   (add res neuron))))))
-
-(defparameter *input-line* "")
-(defparameter *current-position* 0)
 
 (defun isspace (c)
   (or (eql c #\space)
