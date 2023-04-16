@@ -1,0 +1,111 @@
+
+Design Overview
+
+This document is intended to give an overview of the intended design
+of the system.  As was explained elsewhere, only the first component
+was first-pass, completed, and is contained in this repo.
+
+The system consists of three main components:
+
+1.  Input
+2.  Processing
+3.  Output
+
+INPUT COMPONENT
+
+The input component takes textual input (like sentences).  Each unique
+word excites a particular neuron-like node.  If the same word is used
+in another sentence, the same neuron gets excited.  Thus each unique
+word is associated with a single neuron.
+
+The input component is made up of two types of neuron-like elements.
+The first are the ones that get excited when their associated words
+are input.  The second type is intermediate neurons.  These neurons
+are used to associate words that occur at different times.
+
+Only a single word is received at a given time interval.  For example,
+if your sentence is "The book is on the table", the word "the" excites
+the neuron associated with the word "the".  After that, the word
+"book" is received.  That causes two neurons to be fired.  The first
+is the neuron that represents the word "book".  The second is fired
+not by the previous word ("the") but by the previous neuron that
+represented the word "the".
+
+Thus you have two neurons representing the word "book" and the prior
+word "the".  These two neurons fire an additional neuron that
+represents the combination of those two words in the order they were
+input.
+
+This same process continues for all of the words in the sentence,
+building an increasingly complex network of neurons in the fashion
+indicated.  Also, in addition to neurons representing the increasingly
+complex input, the system also generates a network that represents the
+sentence with all combinations of words missing in the sentence.  In
+this way, it is less particular to the exact sentence given.
+
+In the end, there are a large number of ending nodes, each
+representing a whole combination of the words in the given sentence.
+These nodes feed the next layer or component.
+
+PROCESSING COMPONENT
+
+It was intended that this component would be built with a proven
+neural network model.  Its input comes from the input component, and
+its output feeds the output component.  It has hidden layers.
+
+OUTPUT COMPONENT
+
+The output component is largely the reverse of the input component.
+It takes a single input representing an idea, and it produces the
+output sentence.
+
+TRAINING
+
+Training occurs by supplying the input question and the output answer.
+This trains all three components.  Over time, with enough training
+material, the system would begin to generalize the relationships
+between the input and output.  This generalization is the learning.
+
+COMMENTS
+
+It was assumed that much would be learned during the course of
+building and running the system.  These things would be used to
+improve the system.
+
+FIRST GOAL
+
+The first goal of the system was for it to learn what the word "say"
+meant.  Building a system that can understand the word "say" is
+trivial, but making a system that can figure this out on its own is
+quite different.
+
+For example, let's say my training looks like this:
+
+Input:  Say dog
+Output: dog
+
+Input: Say cat
+Output: cat
+
+Input: Say house
+Output: house
+
+Now the test:
+
+Input:  Say car
+Output (should be car!)
+
+The important point here is that is should never have seen the word
+"car" before.
+
+It is clear that the above model cannot do this.  So, incorporating
+some sort of abstraction mechanism would be needed.  For example, a
+node that doesn't represent a particular word but one that represents
+"the word following the word say".
+
+It was felt that these sorts of shortcomings and the answers to them
+would evolve with the use of the system.
+
+Blake McBride
+blake@mcbridemail.com
+April 16, 2023
