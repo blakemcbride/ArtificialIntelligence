@@ -216,6 +216,35 @@ It copies the filler *by reference*, so it works for any word — something neit
 recall nor the category generalization can do. It only kicks in once a cue has been
 confirmed on a few examples (`*copy-threshold*`), so it never hijacks ordinary answers.
 
+The same thing through the interactive loop (`(main)`) — watch the cue kick in:
+
+```text
+input> say dog.
+  guess: (I don't know)
+teach> dog.
+  (learned)
+
+input> say cat.
+  guess: dog                 <- an early associative guess (shares the "say _" frame)
+teach> cat.
+  (learned)
+
+input> say bird.
+  guess: bird                <- the "say" copy cue has now kicked in (copies the next word)
+teach> bird.
+  (learned)
+
+input> say car.
+  guess: car                 <- "car" was never taught -- copied by reference
+teach> yes.
+  (reinforced)
+
+input> quit.
+```
+
+By the `say bird` turn the system answers *before* you teach it, and `say car` works for a
+word it has never seen — the copy cue generalizing to any filler.
+
 You don't tell it which word is the "subject" — it tries every word as the subject and
 keeps the strongest reading. That is what "slot-free" means here.
 
