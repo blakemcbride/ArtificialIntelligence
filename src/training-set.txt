@@ -1,0 +1,139 @@
+# Starter knowledge base for the AI teaching system.
+#
+# Format: one relationship per line --   input phrase => answer
+# Blank lines and lines beginning with # or ; are ignored.
+# Import with, from a REPL in src/:   (train-from-file "training-set.txt")
+#
+# "horses" and "birds" are deliberately NOT taught the walk-on-legs fact -- the system
+# should GENERALIZE it from their other leg/locomotion traits.  Legless animals are
+# taught their distinctive traits (no legs, no feet, cannot run) so they are excluded
+# even though they are animals that move and breathe.
+
+# ---------- legged, walking animals (the exemplars) ----------
+do dogs walk on their legs => yes
+do dogs have legs => yes
+do dogs have feet => yes
+can dogs run => yes
+are dogs animals => yes
+can dogs move => yes
+do dogs breathe => yes
+
+do cats walk on their legs => yes
+do cats have legs => yes
+do cats have feet => yes
+can cats run => yes
+are cats animals => yes
+can cats move => yes
+do cats breathe => yes
+
+do goats walk on their legs => yes
+do goats have legs => yes
+do goats have feet => yes
+can goats run => yes
+are goats animals => yes
+can goats move => yes
+do goats breathe => yes
+
+do cows walk on their legs => yes
+do cows have legs => yes
+do cows have feet => yes
+can cows run => yes
+are cows animals => yes
+can cows move => yes
+do cows breathe => yes
+
+do lions walk on their legs => yes
+do lions have legs => yes
+do lions have feet => yes
+can lions run => yes
+are lions animals => yes
+can lions move => yes
+do lions breathe => yes
+
+do people walk on their legs => yes
+do people have legs => yes
+do people have feet => yes
+can people run => yes
+are people animals => yes
+can people move => yes
+do people breathe => yes
+
+# ---------- legged animals NOT taught the walk fact (must generalize) ----------
+do horses have legs => yes
+do horses have feet => yes
+can horses run => yes
+are horses animals => yes
+can horses move => yes
+do horses breathe => yes
+
+do birds have legs => yes
+do birds have feet => yes
+can birds run => yes
+are birds animals => yes
+can birds move => yes
+do birds breathe => yes
+
+# ---------- legless animals (animals that move & breathe, but no legs/feet) ----------
+do snakes have legs => no
+do snakes have feet => no
+can snakes run => no
+are snakes animals => yes
+can snakes move => yes
+do snakes breathe => yes
+
+do fish have legs => no
+do fish have feet => no
+can fish run => no
+are fish animals => yes
+can fish move => yes
+do fish breathe => yes
+
+do worms have legs => no
+do worms have feet => no
+can worms run => no
+are worms animals => yes
+can worms move => yes
+do worms breathe => yes
+
+# ---------- vehicles (move, but not animals; no legs) ----------
+do cars have legs => no
+do cars have feet => no
+are cars animals => no
+can cars move => yes
+do cars have wheels => yes
+
+do trucks have legs => no
+do trucks have feet => no
+are trucks animals => no
+can trucks move => yes
+do trucks have wheels => yes
+
+# ---------- furniture: HAS legs, but no feet, not an animal, does not move ----------
+do tables have legs => yes
+do tables have feet => no
+are tables animals => no
+can tables move => no
+are tables furniture => yes
+
+do chairs have legs => yes
+do chairs have feet => no
+are chairs animals => no
+can chairs move => no
+are chairs furniture => yes
+
+# ---------- inert objects ----------
+do rocks have legs => no
+do rocks have feet => no
+are rocks animals => no
+can rocks move => no
+
+do rulers have legs => no
+do rulers have feet => no
+are rulers animals => no
+can rulers move => no
+are rulers tools => yes
+
+do bottles have legs => no
+do bottles have feet => no
+are bottles animals => no
+can bottles move => no

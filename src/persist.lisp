@@ -1,0 +1,156 @@
+
+(defpackage "persist"
+  (:use "COMMON-LISP")
+  (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*"))
+
+(in-package "persist")
+(provide "persist")
+
+(require "data-structures")
+(use-package "data-structures")
+
+;;; Persistence (Phase 6): serialise the whole neuron network to one readable
+;;; s-expression and reload it, so learning survives across runs.  The network is a
+;;; shared, partly-cyclic graph (dendrites point at neurons; :association dendrites also
+;;; keep a `from' back-pointer; extender links; the *dictionary* / *output-roots* /
+;;; *responses* / *associations* registries).  We therefore serialise neurons FLAT --
+;;; keyed by their unique id -- writing every reference AS an id, then rebuild in two
+;;; passes (create all neurons, then wire links) through an id -> neuron map.  ids are
+;;; debug-only, so reloaded neurons get fresh ids; the id MAP is what preserves sharing.
+
+(defparameter *save-file* "ai-network.sexp"
+  "Default file the teaching loop loads on startup and saves on exit.")
+
+(defun dendrite->list (d)
+  (list (neuron-id (dendrite-neuron d))
+	(dendrite-weight d)
+	(dendrite-kind d)
+	(and (dendrite-from d) (neuron-id (dendrite-from d)))))
+
+(defun neuron->list (n)
+  (list (neuron-id n)
+	(if (typep n 'named-neuron) :named :plain)
+	(if (typep n 'named-neuron) (named-neuron-name n) nil)
+	(neuron-threshold n)
+	(neuron-current-value n)
+	(and (neuron-extender n) (neuron-id (neuron-extender n)))
+	(mapcar #'dendrite->list (neuron-axon n))))
+
+(defun collect-neurons ()
+  "Every neuron reachable from the registries, as a list (each once)."
+  (let ((seen (make-hash-table)) (result nil))
+    (labels ((visit (n)
+	       (when (and n (not (gethash n seen)))
+		 (setf (gethash n seen) t)
+		 (push n result)
+		 (visit (neuron-extender n))
+		 (dolist (d (neuron-axon n))
+		   (visit (dendrite-neuron d))
+		   (visit (dendrite-from d))))))
+      (maphash (lambda (k v) (declare (ignore k)) (visit v)) *dictionary*)
+      (dolist (r *output-roots*) (visit r))
+      (maphash (lambda (k v) (declare (ignore k)) (visit v)) *responses*)
+      (maphash (lambda (k v) (declare (ignore k)) (visit v)) *concepts*))  ; concept state neurons
+    result))
+
+(defun concept-edges->list ()
+  "Flatten *concept-graph* to a list of (a-id b-id weight) directed entries."
+  (let (acc)
+    (maphash (lambda (a tab)
+	       (maphash (lambda (b w) (push (list (neuron-id a) (neuron-id b) w) acc)) tab))
+	     *concept-graph*)
+    acc))
+
+(defun hash->id-alist (table)
+  "Alist of (key . neuron-id) for a string -> neuron hash table."
+  (let (acc)
+    (maphash (lambda (k v) (push (cons k (neuron-id v)) acc)) table)
+    acc))
+
+(defun save-network (&optional (path *save-file*))
+  "Serialise the whole network to PATH as one readable s-expression.  Returns PATH."
+  (with-open-file (s path :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (with-standard-io-syntax
+      (prin1 (list :format :ai-network-v1
+		   :next-neuron-id *next-neuron-id*
+		   :neurons (mapcar #'neuron->list (collect-neurons))
+		   :dictionary (hash->id-alist *dictionary*)
+		   :output-roots (mapcar #'neuron-id *output-roots*)
+		   :responses (hash->id-alist *responses*)
+		   :concept-states (hash->id-alist *concepts*)
+		   :concept-edges (concept-edges->list))
+	     s)
+      (terpri s)))
+  path)
+
+(defun rebuild-network (data)
+  "Reset, then rebuild the network from DATA (the read s-expression)."
+  (reset)
+  (let ((by-id (make-hash-table)))
+    ;; pass 1: create every neuron (links filled in pass 2)
+    (dolist (rec (getf data :neurons))
+      (destructuring-bind (id kind name threshold current-value extender-id dendrites) rec
+	(declare (ignore extender-id dendrites))
+	(let ((n (if (eq kind :named) (make-named-neuron :name name) (make-neuron))))
+	  (setf (neuron-threshold n) threshold
+		(neuron-current-value n) current-value)
+	  (setf (gethash id by-id) n))))
+    ;; pass 2: wire extender links and axons by resolving ids
+    (dolist (rec (getf data :neurons))
+      (destructuring-bind (id kind name threshold current-value extender-id dendrites) rec
+	(declare (ignore kind name threshold current-value))
+	(let ((n (gethash id by-id)))
+	  (when extender-id
+	    (setf (neuron-extender n) (gethash extender-id by-id)))
+	  (setf (neuron-axon n)
+		(mapcar (lambda (drec)
+			  (destructuring-bind (target weight dkind from) drec
+			    (make-dendrite :neuron (gethash target by-id)
+					   :weight weight
+					   :kind dkind
+					   :from (and from (gethash from by-id)))))
+			dendrites)))))
+    ;; registries
+    (dolist (pair (getf data :dictionary))
+      (setf (gethash (car pair) *dictionary*) (gethash (cdr pair) by-id)))
+    (setf *output-roots*
+	  (mapcar (lambda (id) (gethash id by-id)) (getf data :output-roots)))
+    (dolist (pair (getf data :responses))
+      (setf (gethash (car pair) *responses*) (gethash (cdr pair) by-id)))
+    ;; concept graph: state registry + weighted edges
+    (dolist (pair (getf data :concept-states))
+      (setf (gethash (car pair) *concepts*) (gethash (cdr pair) by-id)))
+    (dolist (e (getf data :concept-edges))
+      (destructuring-bind (a-id b-id w) e
+	(let ((a (gethash a-id by-id)) (b (gethash b-id by-id)))
+	  (when (and a b)
+	    (let ((tab (or (gethash a *concept-graph*)
+			   (setf (gethash a *concept-graph*) (make-hash-table :test 'eq)))))
+	      (setf (gethash b tab) w))))))
+    ;; *associations* = every :association dendrite, recollected from the rebuilt axons
+    (dolist (rec (getf data :neurons))
+      (dolist (d (neuron-axon (gethash (first rec) by-id)))
+	(when (eq :association (dendrite-kind d))
+	  (push d *associations*))))
+    (setf *next-neuron-id* (getf data :next-neuron-id)))
+  t)
+
+(defun load-network (&optional (path *save-file*))
+  "If PATH exists, rebuild the network from it and return T; otherwise return NIL."
+  (when (probe-file path)
+    (rebuild-network (with-open-file (s path :direction :input)
+		       (with-standard-io-syntax (read s))))
+    t))
+
+;;; --- User-facing knowledge-base export / import ---------------------------------
+;;; The whole knowledge base (input network, output chains, associations, AND the
+;;; concept graph) round-trips through one file.
+
+(defun export-kb (path)
+  "Write the entire knowledge base to PATH.  Returns PATH."
+  (save-network path))
+
+(defun import-kb (path)
+  "Replace the current knowledge base with the one stored at PATH.  T if loaded, NIL if
+   the file is missing."
+  (load-network path))

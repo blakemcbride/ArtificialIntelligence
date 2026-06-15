@@ -1,7 +1,7 @@
 
 (defpackage "line-input"
   (:use "COMMON-LISP")
-  (:export "CREATE-LINE" "ADD"))
+  (:export "CREATE-LINE" "ADD" "INTERN-WORD" "INTERN-WORDS"))
 (in-package "line-input")
 (provide "line-input")
 
@@ -15,6 +15,16 @@
   "Add cell to the beginning of the list contained in variable var"
   `(setq ,var (cons ,cell ,var)))
 
+(defun intern-word (word)
+  "Return the named-neuron for WORD, creating and interning it in *dictionary* if new."
+  (or (gethash word *dictionary*)
+      (setf (gethash word *dictionary*) (make-named-neuron :name word))))
+
+(defun intern-words (words)
+  "Intern each string in WORDS into *dictionary*; return the named-neurons in order.
+   The non-stdin counterpart to create-line, used by inference (processing:respond)."
+  (mapcar #'intern-word words))
+
 (defun create-line ()
   "Returns a list of named neurons"
   (setq *input-line* "")
@@ -26,11 +36,7 @@
 		(return nil))
 	       ((string-eol word)
 		(return (nreverse res))))
-	 (let ((neuron (gethash word *dictionary*)))
-	   (cond ((null neuron)
-		  (setq neuron (make-named-neuron :name word))
-		  (setf (gethash word *dictionary*) neuron)))
-	   (add res neuron))))))
+	 (add res (intern-word word))))))
 
 (defun isspace (c)
   (or (eql c #\space)
@@ -48,11 +54,12 @@
        (eol (char s 0))))
 
 (defun getword ()
-  "Get and return a single word from the input stream, return as a string"
+  "Get and return a single word from the input stream as a string, or NIL at end of input"
 					; if no words, read a non-blank line
   (loop while (>= *current-position* (length *input-line*)) do
        (setq *current-position* 0)
-       (setq *input-line* (string-downcase (read-line)))
+       (setq *input-line* (string-downcase (or (read-line nil nil)
+						(return-from getword nil))))
        (loop while (and (< *current-position* (length *input-line*))
 			(isspace (char *input-line* *current-position*))) do
 	    (incf *current-position*)))
@@ -71,5 +78,3 @@
 		     (isspace (char *input-line* *current-position*))) do
 	 (incf *current-position*))
     (coerce (nreverse res) 'string)))
-
-  

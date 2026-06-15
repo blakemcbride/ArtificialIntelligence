@@ -5,15 +5,26 @@
 	   "*NEXT-NEURON-ID*"
 	   "RESET"
 	   "NEURON"
+	   "NEURON-ID"
 	   "NEURON-AXON"
 	   "NEURON-EXTENDER"
 	   "NAMED-NEURON"
 	   "NAMED-NEURON-NAME"
 	   "MAKE-NEURON"
 	   "MAKE-NAMED-NEURON"
-	   "DENTRIDE"
+	   "DENDRITE"
 	   "DENDRITE-NEURON"
+	   "DENDRITE-WEIGHT"
+	   "DENDRITE-KIND"
+	   "DENDRITE-FROM"
 	   "MAKE-DENDRITE"
+	   "NEURON-THRESHOLD"
+	   "NEURON-CURRENT-VALUE"
+	   "*OUTPUT-ROOTS*"
+	   "*RESPONSES*"
+	   "*ASSOCIATIONS*"
+	   "*CONCEPTS*"
+	   "*CONCEPT-GRAPH*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -23,15 +34,28 @@
 
 (defparameter *next-neuron-id* 0)
 
+;; Registries populated by later phases (Output / Processing); declared here so
+;; reset can clear them and so the other packages share one canonical list.
+(defparameter *output-roots* nil)   ; output "idea" neurons that generate a response when fired
+(defparameter *responses* (make-hash-table :test 'equal)) ; response text -> output root, for chain reuse
+(defparameter *associations* nil)   ; association dendrites (kind :association), for fast decay/pruning
+(defparameter *concepts* (make-hash-table :test 'equal)) ; "predicate:answer" string -> state neuron (Phase 7)
+(defparameter *concept-graph* (make-hash-table :test 'eq)) ; concept neuron -> (neighbor neuron -> weight): the Hebbian concept graph
+
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
-  (setq *next-neuron-id* 0))
+  (setq *next-neuron-id* 0)
+  (setq *output-roots* nil)
+  (setq *responses* (make-hash-table :test 'equal))
+  (setq *associations* nil)
+  (setq *concepts* (make-hash-table :test 'equal))
+  (setq *concept-graph* (make-hash-table :test 'eq)))
 
 (defstruct neuron
   "An unnamed neuron"
-  (threshold 0 :type fixnum)
-  (current-value 0 :type fixnum)
-  (id (incf *next-neuron-id*) :type fixnum :read-only) ; only used for debugging purposes
+  (threshold 0.0 :type single-float)
+  (current-value 0.0 :type single-float)
+  (id (incf *next-neuron-id*) :type fixnum :read-only t) ; only used for debugging purposes
   (extender nil) ; a particular neuron that acts as an extender to this neuron
   (axon nil)) ; dendrite - linked list of weighted output neurons (including the extender)
 
@@ -42,7 +66,9 @@
 (defstruct dendrite
   "A Dendrite"
   (neuron nil)
-  (weight 0.0 :type single-float))
+  (weight 0.0 :type single-float)
+  (kind :sequence :type keyword) ; :sequence | :extender | :association
+  (from nil)) ; source neuron, set for :association dendrites so decay/prune can find it
 
 (defun dump-neuron (n level)
   (dotimes (var level)
