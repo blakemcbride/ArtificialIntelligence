@@ -350,6 +350,16 @@ is more/cleaner data, not a weighting trick.  A non-brittle *count* also stays o
 graph** while the vectors do similarity and recognition.  Open: richer learned embeddings;
 consistent number (singular/plural) in the knowledge base.
 
+**Learning from raw text** (`read-text` / `read-text-file`).  A first step toward
+self-supervised learning: each sentence feeds the distributed-vector co-occurrence
+(*unsupervised* similarity — read about a new thing and it clusters with its kin, no
+teacher), and simple declarative patterns also teach facts — "X is the Y of Z" → a
+relational fact ("Kigali is the capital of Rwanda" → answers "what is the capital of
+Rwanda"), "X is a Y" → membership; questions are skipped.  Pattern extraction is
+deliberately light (regular sentences only); turning arbitrary prose into facts is the open,
+hard problem (and heavy parsing drifts back toward the symbolic style).  But similarity from
+raw text is free and continual, exactly in the project's spirit.
+
 ---
 
 ## Part 4 — The build plan (phased, each phase independently testable)

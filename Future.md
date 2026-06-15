@@ -47,6 +47,12 @@ These would most make it *feel* like an LLM while staying true to the design:
   limits found while pushing: the vectors are **data-hungry** (sparse concepts are noisy;
   minority categories like fish drift), which weighting tricks (polarity binding, idf²) did
   not fix — the cure is more/cleaner data, not a trick.
+- **Learning from raw text.** ✅ **Started** (`read-text` / `read-text-file`; `Plan.md`
+  §3.8): a step toward self-supervised learning — every sentence feeds the vector
+  co-occurrence (unsupervised similarity, no teacher), and simple declarative patterns
+  ("X is the Y of Z", "X is a Y") also teach facts. Similarity from raw text is free and
+  continual; extracting facts from *arbitrary* prose (vs. regular sentences) is still the
+  hard, open part.
 - **Chained reasoning.** "A is a B, B's are C, so A is C." Multi-hop over the knowledge;
   spreading activation is a start.
 

@@ -594,6 +594,18 @@
   (check "membership stays discriminating (the novel word is not a vehicle)"
          (not (recognized-member-p "zebus" "vehicles")))
 
+  ;; ===================== Learning from raw text (read-text) =====================
+  (format t "~%Read-text tests~%")
+  (reset)
+  (train-from-file "knowledge-base.txt" :verbose nil)
+  (read-text "Quito is the capital of Ecuador. Ecuador is a country." :verbose nil)
+  (check "read-text learns a relational fact from prose (capital of ecuador -> quito)"
+         (equal '("quito") (ask "what is the capital of ecuador")))
+  (check "read-text learns a membership fact from prose (ecuador is a country -> yes)"
+         (equal '("yes") (ask "is ecuador a country")))
+  (check "read-text reports how many sentences it read"
+         (= 2 (read-text "The sky is high. Birds sing." :verbose nil)))
+
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
 	  (if (zerop *tests-failed*) "ALL TESTS PASSED" "SOME TESTS FAILED"))

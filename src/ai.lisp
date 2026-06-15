@@ -196,3 +196,76 @@
 			   (incf count))))))))
       (when verbose (format t "~&trained on ~d relationships from ~a~%" count path))
       count)))
+
+;;; --- Learning from raw text (read-text) ----------------------------------------
+;;; Two things happen per sentence: (1) its words feed the distributed-vector co-occurrence
+;;; -- unsupervised similarity learning, no teacher; (2) if the sentence matches a simple
+;;; declarative pattern, a fact is also learned.  Pattern extraction is deliberately light
+;;; (regular sentences only); arbitrary prose is the open, hard problem.
+
+(defparameter *question-words*
+  '("what" "who" "where" "when" "why" "how" "is" "are" "do" "does" "can" "will" "did")
+  "Leading words that mark a sentence as a question, so it isn't mistaken for a stated fact.")
+
+(defun slurp-file (path)
+  (with-open-file (s path :direction :input)
+    (let ((str (make-string (file-length s))))
+      (subseq str 0 (read-sequence str s)))))
+
+(defun split-sentences (text)
+  "Split TEXT into trimmed sentence strings on . ! ? boundaries."
+  (let ((res '()) (start 0) (n (length text)))
+    (flet ((emit (i) (let ((s (string-trim '(#\Space #\Tab #\Newline #\Return)
+					    (subseq text start i))))
+		       (when (plusp (length s)) (push s res)))))
+      (dotimes (i n) (when (member (char text i) '(#\. #\! #\?)) (emit i) (setf start (1+ i))))
+      (emit n))
+    (nreverse res)))
+
+(defun join-words (ws) (format nil "~{~a~^ ~}" ws))
+
+(defun extract-fact (words)
+  "If WORDS is a simple declarative sentence, learn a fact and return T.  Handles
+   'X is the Y of Z' (relational) and 'X is/are Y' (membership/copula).  Skips questions."
+  (when (and words (not (member (first words) *question-words* :test #'string=)))
+    (let ((cp (or (position "is" words :test #'string=)
+		  (position "are" words :test #'string=))))
+      (when (and cp (> cp 0) (< cp (1- (length words))))
+	(let ((cop (nth cp words)) (before (subseq words 0 cp)) (after (subseq words (1+ cp))))
+	  (cond
+	    ;; "X is the Y of Z"  ->  what is the Y of Z => X
+	    ((and (string= (first after) "the") (position "of" after :test #'string=))
+	     (let* ((op (position "of" after :test #'string=))
+		    (y (subseq after 1 op)) (z (subseq after (1+ op))))
+	       (when (and y z before)
+		 (learn (format nil "what is the ~a of ~a" (join-words y) (join-words z))
+			(join-words before))
+		 t)))
+	    ;; "the Y of Z is X"  ->  what is the Y of Z => X
+	    ((and (string= (first before) "the") (position "of" before :test #'string=))
+	     (let* ((op (position "of" before :test #'string=))
+		    (y (subseq before 1 op)) (z (subseq before (1+ op))))
+	       (when (and y z after)
+		 (learn (format nil "what is the ~a of ~a" (join-words y) (join-words z))
+			(join-words after))
+		 t)))
+	    ;; "X is/are Y"  ->  is/are X Y => yes
+	    (t (learn (format nil "~a ~a ~a" cop (join-words before) (join-words after)) "yes")
+	       t)))))))
+
+(defun read-text (text &key (extract t) (verbose t))
+  "Learn from raw TEXT (one or more sentences).  Each sentence feeds the distributed-vector
+   co-occurrence (unsupervised similarity); declarative sentences also teach a fact when
+   EXTRACT is true.  Returns (values sentences-read facts-learned)."
+  (let ((sentences (split-sentences text)) (facts 0))
+    (dolist (s sentences)
+      (let ((words (tokenize s)))
+	(when words
+	  (note-cooccurrence words nil)                       ; similarity, always (no teacher)
+	  (when (and extract (extract-fact words)) (incf facts)))))
+    (when verbose (format t "~&read ~d sentences, learned ~d facts~%" (length sentences) facts))
+    (values (length sentences) facts)))
+
+(defun read-text-file (path &rest args)
+  "Read raw text from PATH and learn from it (see read-text)."
+  (apply #'read-text (slurp-file path) args))
