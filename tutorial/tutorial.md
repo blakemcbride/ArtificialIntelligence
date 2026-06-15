@@ -116,13 +116,14 @@ input phrase => answer
 
 Blank lines and lines starting with `#` or `;` are ignored, so you can comment and group.
 Two sets ship with the system: `src/training-set.txt` (about 105 facts — the focused
-generalization demo) and `src/knowledge-base.txt` (a broad **starter knowledge base**, ~374
-facts across greetings, animals and their traits, colors, opposites, categories, numbers,
-plus copy and composition examples). Import either with `train-from-file`:
+generalization demo) and `src/knowledge-base.txt` (a broad **starter knowledge base**,
+~1,770 facts spanning greetings, a large animal-trait matrix, composition, categories,
+colors, opposites, arithmetic, geography, space, and simple science). Import either with
+`train-from-file`:
 
 ```lisp
 (train-from-file "knowledge-base.txt")
-;; => 374
+;; => 1770
 ```
 
 **You usually don't need to do this by hand:** the first time you run `(main)` with no saved

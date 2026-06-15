@@ -449,7 +449,7 @@ continual-learning behavior can be regression-checked.
       covers several categories. After import, **horses/birds generalize** "walk on their
       legs" (never taught) while **snakes/fish/worms/cars/tables/rocks are excluded** —
       including "even snakes". `export-kb`/`import-kb` round-trip the whole KB. Suite 104.
-- [x] **Broad starter KB + startup:** `src/knowledge-base.txt` (~374 facts — greetings,
+- [x] **Broad starter KB + startup:** `src/knowledge-base.txt` (~1,770 facts — greetings,
       animals/traits, colors, opposites, categories, numbers, copy and composition
       examples) exercises every capability; `main` auto-learns it (`*starter-kb*`) on a
       first start with no saved memory, so a fresh system answers, copies, and composes out
