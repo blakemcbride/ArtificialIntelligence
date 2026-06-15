@@ -242,6 +242,46 @@ word it has never seen — the copy cue generalizing to any filler.
 You don't tell it which word is the "subject" — it tries every word as the subject and
 keeps the strongest reading. That is what "slot-free" means here.
 
+### Conversation / follow-ups — `ask`
+
+`ask` is the conversational front door: it remembers the previous turn, so a short
+follow-up can lean on it. After "do dogs have legs?", the fragment "and cats?" is
+understood as "do cats have legs?" — it replaces the previous sentence's most
+*concept-similar* word (here "dogs") with the new one. Which word to swap is decided by the
+learned concept graph, not a grammar rule. `ask` answers via the concept graph and
+remembers the resolved turn, so follow-ups chain:
+
+```lisp
+(reset)
+(train-from-file "training-set.txt")
+(ask "do dogs have legs?")     ; => ("yes")
+(ask "and cats?")              ; => ("yes")   (resolved to "do cats have legs")
+(ask "what about snakes?")     ; => ("no")    (resolved to "do snakes have legs")
+```
+
+A follow-up is recognized by a light surface cue — a single word, or a leading
+`and` / `or` / `what about` / `how about`; anything that looks like a full sentence is
+answered on its own. (Pronouns like "it" / "they" aren't resolved yet — only these
+ellipsis-style follow-ups.)
+
+### Composing a reply — templates
+
+Replies don't have to be canned. When a taught answer reuses an input word, the system
+records a **template**: the rest of the input as a frame, and the output with that word
+turned into a slot. The real slot recurs across examples, so it strengthens — then the
+system can fill it for a brand-new word, composing a sentence it was never taught verbatim:
+
+```lisp
+(reset)
+(learn "what is a dog" "a dog is an animal")
+(learn "what is a cat" "a cat is an animal")
+(respond "what is a horse")    ; => ("a" "horse" "is" "an" "animal")   (never taught)
+(respond "what is a llama")    ; => ("a" "llama" "is" "an" "animal")
+```
+
+It takes a couple of examples before a template is trusted (`*compose-threshold*`), so a
+one-off coincidence never composes.
+
 ---
 
 ## 5. A complete worked example
@@ -324,6 +364,7 @@ s-expression — you can peek at it.
 | Teach one pair from code | `(learn "Cats purr." "yes")` |
 | Bulk-teach from a file | `(train-from-file "file.txt")` |
 | Get the system's answer to an input | `(respond "Do cats purr?")` |
+| Ask conversationally (resolves follow-ups) | `(ask "and cats?")` |
 | Ask if an input generalizes to an answer | `(infer-p "Do horses walk on their legs?" "yes")` |
 | Get the generalization strength (+ subject) | `(infer-strength "Do horses walk on their legs?" "yes")` |
 | Save / load a knowledge base | `(export-kb "f.sexp")` / `(import-kb "f.sexp")` |

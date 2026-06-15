@@ -122,17 +122,21 @@
   "Given an input sentence (a string, e.g. \"Do cats purr?\", or a list of words), return
    the word list of the best response, or NIL (\"I don't know\").  A strongly-learned
    attention copy cue fires first (e.g. \"say X\" -> X, even for a novel X); otherwise the
-   answer comes from spreading activation across the input->output associations.  Secondary
-   values are the winning root and its activation.  No weights change here."
+   answer comes from spreading activation across the input->output associations; and if
+   nothing is recalled, a learned template may compose one.  Secondary values are the
+   winning root and its activation.  No weights change here."
   (let* ((input-words (as-words input))
-	 (copied (copy-response input-words)))
-    (if copied
-	(values copied nil 0.0)
-	(let* ((endings (build-structure (intern-words input-words)))
-	       (winner  (select-winner (spread-activation endings))))
-	  (if winner
-	      (values (produce-output winner) winner (neuron-current-value winner))
-	      (values nil nil 0.0))))))
+	 (copied (copy-response input-words)))            ; 1. attention copy head (say X -> X)
+    (cond
+      (copied (values copied nil 0.0))
+      (t (let ((composed (compose input-words)))          ; 2. compose from a learned template
+	   (cond
+	     (composed (values composed nil 0.0))
+	     (t (let* ((endings (build-structure (intern-words input-words)))
+		       (winner  (select-winner (spread-activation endings))))  ; 3. direct recall
+		  (if winner
+		      (values (produce-output winner) winner (neuron-current-value winner))
+		      (values nil nil 0.0))))))))))
 
 ;;; --- Reinforcement & decay (Phase 4): the continual-learning dynamics ----------
 ;;;
@@ -224,4 +228,5 @@
     (decay-associations)
     (note-relationship input-words correct-words)   ; also grow the concept graph (Phase 7)
     (note-copy input-words correct-words)           ; also learn copy cues (attention head)
+    (note-template input-words correct-words)       ; also learn response templates (composition)
     guess))

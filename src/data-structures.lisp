@@ -26,6 +26,8 @@
 	   "*CONCEPTS*"
 	   "*CONCEPT-GRAPH*"
 	   "*COPY-CUES*"
+	   "*TEMPLATES*"
+	   "*LAST-TURN*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -43,6 +45,8 @@
 (defparameter *concepts* (make-hash-table :test 'equal)) ; "predicate:answer" string -> state neuron (Phase 7)
 (defparameter *concept-graph* (make-hash-table :test 'eq)) ; concept neuron -> (neighbor neuron -> weight): the Hebbian concept graph
 (defparameter *copy-cues* (make-hash-table :test 'equal)) ; cue word -> strength: learned "copy the next word" triggers (attention head)
+(defparameter *templates* (make-hash-table :test 'equal)) ; frame string -> alist of (template . strength): learned response templates (composition)
+(defparameter *last-turn* nil) ; the previous resolved input words: conversation memory (transient; not persisted)
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -52,7 +56,9 @@
   (setq *associations* nil)
   (setq *concepts* (make-hash-table :test 'equal))
   (setq *concept-graph* (make-hash-table :test 'eq))
-  (setq *copy-cues* (make-hash-table :test 'equal)))
+  (setq *copy-cues* (make-hash-table :test 'equal))
+  (setq *templates* (make-hash-table :test 'equal))
+  (setq *last-turn* nil))
 
 (defstruct neuron
   "An unnamed neuron"

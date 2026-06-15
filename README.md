@@ -44,8 +44,10 @@ agent. **Claude Code wrote much of the current code**, working from my design an
 direction: it built out the Processing and Output components, a Hebbian *concept graph*
 that produces the category generalization described above, a transformer-like *attention
 head* — built as Hebbian fast weights — that handles copy/binding (the original goal of
-`say X → X` for a word never seen), an interactive teaching loop, knowledge-base
-persistence, an importable training set, and an automated test suite.
+`say X → X` for a word never seen), *conversation memory* that resolves follow-ups against
+the previous turn, *template composition* that assembles novel replies from learned
+fragments, an interactive teaching loop, knowledge-base persistence, an importable training
+set, and an automated test suite.
 
 The system is now functional end to end. You can teach it, and it learns, generalizes to
 things it was never directly taught, and remembers across sessions — all through local
@@ -69,6 +71,14 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 ;; copy / binding -- the original goal, generalizing to a word never seen:
 (learn "say dog" "dog") (learn "say cat" "cat") (learn "say house" "house")
 (respond "say car")                                ; => ("car")
+
+;; conversation memory -- a follow-up leans on the previous turn:
+(ask "do dogs have legs?")                         ; => ("yes")
+(ask "and cats?")                                  ; => ("yes")   (i.e. "do cats have legs?")
+
+;; composition -- a reply assembled from learned fragments, never seen verbatim:
+(learn "what is a dog" "a dog is an animal") (learn "what is a cat" "a cat is an animal")
+(respond "what is a horse")                        ; => ("a" "horse" "is" "an" "animal")
 
 (main)   ; or start an interactive teaching session
 ```

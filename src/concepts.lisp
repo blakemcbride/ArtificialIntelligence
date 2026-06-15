@@ -4,11 +4,13 @@
   (:export "RELATE"
 	   "NOTE-RELATIONSHIP"
 	   "CATEGORY-STRENGTH"
+	   "CONCEPT-SIMILARITY"
 	   "MEMBER-BASELINE"
 	   "RECOGNIZED-STRENGTH-P"
 	   "RECOGNIZES-P"
 	   "INFER-STRENGTH"
 	   "INFER-P"
+	   "INFER-ANSWER"
 	   "*CONCEPT-HOPS*"
 	   "*CONCEPT-DECAY*"
 	   "*CONCEPT-FRACTION*"
@@ -112,6 +114,20 @@
       (gethash state-neuron (spread subj-neuron) 0.0)
       0.0))
 
+(defun concept-similarity (word-a word-b)
+  "How many concept-graph (predicate:answer) states words A and B both connect to -- a
+   slot-free similarity (shared neighbours = shared learned ideas).  Used to resolve
+   conversational follow-ups.  0 if either word is unknown or they are the same node."
+  (let ((na (gethash word-a *dictionary*)) (nb (gethash word-b *dictionary*)))
+    (if (and na nb (not (eq na nb)))
+	(let ((ta (gethash na *concept-graph*)) (tb (gethash nb *concept-graph*)) (c 0))
+	  (when (and ta tb)
+	    (maphash (lambda (k v) (declare (ignore v))
+		       (when (gethash k tb) (incf c)))
+		     ta))
+	  c)
+	0)))
+
 (defun category-strength (subject predicate answer)
   "How strongly does word SUBJECT belong to the category defined by (PREDICATE ANSWER)?
    = spreading activation from the subject concept reaching the (predicate:answer) state.
@@ -187,3 +203,26 @@
     (multiple-value-bind (s who frame) (infer-strength input answer)
       (declare (ignore who))
       (and frame (recognized-strength-p s frame answer-str)))))
+
+(defun answers-for-frame (frame)
+  "Every answer A for which a state `frame:A' has been learned in *concepts*."
+  (let* ((prefix (concatenate 'string frame ":")) (pl (length prefix)) (acc nil))
+    (maphash (lambda (k v) (declare (ignore v))
+	       (when (and (>= (length k) pl) (string= prefix k :end2 pl))
+		 (push (subseq k pl) acc)))
+	     *concepts*)
+    acc))
+
+(defun infer-answer (input)
+  "The best-supported ANSWER to INPUT via the concept graph (the accurate, generalizing
+   path), or NIL.  Slot-free: tries each word-as-subject decomposition against every answer
+   attested for that frame, and returns the answer whose category strength is highest and
+   clears the adaptive membership cutoff.  INPUT is a sentence string or a word list."
+  (let ((input-words (as-words input)) (best 0.0) (ans nil))
+    (loop for i from 0 for w in input-words
+	  for fr = (frame-without input-words i)
+	  do (dolist (a (answers-for-frame fr))
+	       (let ((s (category-strength w fr a)))
+		 (when (and (> s best) (recognized-strength-p s fr a))
+		   (setf best s ans a)))))
+    (and ans (as-words ans))))

@@ -3,8 +3,11 @@
   (:use "COMMON-LISP")
   (:export "NOTE-COPY"
 	   "COPY-RESPONSE"
+	   "NOTE-TEMPLATE"
+	   "COMPOSE"
 	   "*ATTN-DIM*"
-	   "*COPY-THRESHOLD*"))
+	   "*COPY-THRESHOLD*"
+	   "*COMPOSE-THRESHOLD*"))
 
 (in-package "attention")
 (provide "attention")
@@ -110,3 +113,46 @@
     (when best-pos
       (let ((memory (bind-sequence input-words)))
 	(list (decode (funcall memory (role (1+ best-pos))) input-words))))))
+
+;;; --- Fragment / template composition (Future.md item 2) ------------------------------
+;;; So replies aren't canned: learn response TEMPLATES with a slot, and compose novel
+;;; sentences by filling the slot with an input word (copy by reference -- the binding
+;;; mechanism above).  A template is the taught output with the reused input word replaced
+;;; by :slot, keyed by the rest of the input (the frame).  The genuine slot recurs across
+;;; examples ("what is a dog"->"a dog is an animal", ...cat...->...cat...), so its template
+;;; accumulates strength; coincidental reuses (e.g. a function word) scatter across frames
+;;; and stay weak -- the same recurrence-wins trick the concept graph uses for subjects.
+
+(defparameter *compose-threshold* 2.0
+  "A template must recur on at least this many examples before it is used to compose, so a
+   one-off coincidence never fires.")
+
+(defun frame-string (words omit)
+  "WORDS joined into a frame string with the first occurrence of OMIT removed."
+  (format nil "~{~a~^ ~}" (remove omit words :test #'string= :count 1)))
+
+(defun note-template (input-words output-words)
+  "Learn a response template: if a multi-word OUTPUT reuses an input word, record
+   `input-minus-that-word' (frame) -> `output-with-that-word-as-:slot'."
+  (when (and input-words output-words (cdr output-words))      ; multi-word output only
+    (dolist (w (remove-duplicates input-words :test #'string=))
+      (when (member w output-words :test #'string=)
+	(let* ((frame (frame-string input-words w))
+	       (template (substitute :slot w output-words :test #'string=))
+	       (cell (assoc template (gethash frame *templates*) :test #'equal)))
+	  (if cell
+	      (incf (cdr cell))
+	      (push (cons template 1) (gethash frame *templates*))))))))
+
+(defun compose (input-words)
+  "Compose a reply from a learned template: for each input word, if removing it yields a
+   frame with a template at or above *compose-threshold*, fill that template's :slot with
+   the word (copy by reference).  Returns the strongest composed word list, or NIL -- a
+   sentence that may never have been seen verbatim, e.g. \"what is a horse\" ->
+   (a horse is an animal) from templates taught only on dogs and cats."
+  (let ((best 0.0) (out nil))
+    (dolist (w input-words)
+      (dolist (cell (gethash (frame-string input-words w) *templates*))
+	(when (and (>= (cdr cell) *compose-threshold*) (> (cdr cell) best))
+	  (setf best (cdr cell) out (substitute w :slot (car cell))))))
+    out))

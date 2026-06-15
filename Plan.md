@@ -280,6 +280,32 @@ Open: multi-word copies and other roles/offsets; learning the cue more distribut
 and giving the input network distributed (vector) token codes throughout, not only in the
 attention head.
 
+### 3.7 Conversation memory and reply composition (Future.md items)
+
+Two user-facing additions from `Future.md`, both built on the existing pieces.
+
+**Conversation memory (follow-ups).** A short follow-up leans on the previous turn: after
+"do dogs have legs?", "and cats?" becomes "do cats have legs?".  The fragment's content word
+replaces the previous sentence's most concept-similar word (`concept-similarity` = shared
+concept-graph neighbours), so *which* word to swap is decided by the learned graph, not a
+grammar rule.  The previous turn is held in `*last-turn*`; `resolve-followup` rewrites the
+fragment, `ask` answers the result via `infer-answer` (the accurate concept-graph path) and
+remembers it, and `main` does the same each turn.  A follow-up is recognized by a small
+surface cue (a single word, or a leading "and"/"or"/"what about"/"how about").
+
+**Template / fragment composition.** So replies aren't canned.  When a taught multi-word
+answer reuses an input word, `note-template` records `input-minus-that-word` (a frame) ->
+`output-with-that-word-as-:slot`.  The genuine slot recurs across examples ("what is a dog"
+-> "a dog is an animal", ...cat...), so its template accumulates strength while coincidental
+reuses (function words) scatter across frames and stay weak.  Once a template clears
+`*compose-threshold*`, `compose` fills its slot with the matching input word (copy by
+reference), so `respond` (after the copy head, before associative recall) answers "what is a
+horse?" with "a horse is an animal" — a sentence never seen verbatim.  `*templates*` persists
+and resets with the rest of the system.
+
+Open: pronoun / coreference resolution (only ellipsis is handled today); multi-slot and
+multi-word-filler templates; composing from several fragments rather than one template.
+
 ---
 
 ## Part 4 — The build plan (phased, each phase independently testable)
@@ -441,6 +467,16 @@ continual-learning behavior can be regression-checked.
       answers `say car → car` (car never seen), generalizing to any filler by routing it
       *by reference*. 6 new tests; suite now **115**, green on SBCL. PoC:
       `attention-experiment.lisp`.  See §3.6.
+
+### Phase 7c — Conversation memory + reply composition  ✅ done
+- [x] **Conversation memory** (`ai.lisp`): `resolve-followup` / `ask` fold a follow-up into
+      the previous turn (`*last-turn*`) by concept-similarity, answering via `infer-answer`.
+- [x] **Template composition** (`attention.lisp`): `note-template` / `compose` learn
+      `frame → template-with-:slot` and fill the slot by reference, so `respond` composes
+      replies never seen verbatim. Both persist with the network.
+- **Done when:** ✓ after "do dogs have legs?", "and cats?" → yes (resolved to "do cats have
+      legs"); taught "what is a dog/cat", "what is a horse?" → "a horse is an animal". 9 new
+      tests; suite now **124**, green on SBCL.  See §3.7 / `Future.md`.
 
 ### Phase 8 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network

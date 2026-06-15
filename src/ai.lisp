@@ -53,6 +53,53 @@
   (and (consp words) (null (cdr words))
        (member (car words) *confirm-words* :test #'string=)))
 
+;;; --- Conversation memory (Future.md item 1) ------------------------------------
+;;; A short follow-up leans on the previous turn: its content word fills the previous
+;;; sentence's most concept-similar slot.  After "do dogs have legs?", "and cats?" becomes
+;;; "do cats have legs?".  Which word to replace is decided by the learned concept graph
+;;; (concept-similarity) -- emergent, not a grammar rule.
+
+(defparameter *followup-markers* '("and" "or")
+  "Leading words that mark an input as a conversational follow-up fragment.")
+
+(defun followup-p (words)
+  "Is WORDS a follow-up fragment (lean on the previous turn) rather than a full sentence?
+   True for a single word, a leading `and'/`or', or a leading `what about' / `how about'."
+  (and (consp words)
+       (or (null (cdr words))                              ; a single word
+	   (member (first words) *followup-markers* :test #'string=)
+	   (and (cdr words)
+		(member (first words) '("what" "how") :test #'string=)
+		(string= (second words) "about")))))
+
+(defun resolve-followup (words)
+  "If WORDS is a follow-up and a previous turn exists, return the previous sentence with
+   its most concept-similar word replaced by this fragment's best-matching word; otherwise
+   return WORDS unchanged."
+  (if (and (followup-p words) *last-turn*)
+      (let ((best 0) (fw nil) (lw nil))
+	(dolist (a words)
+	  (dolist (b *last-turn*)
+	    (let ((s (concept-similarity a b)))
+	      (when (> s best) (setf best s fw a lw b)))))
+	(if fw (substitute fw lw *last-turn* :test #'string=) words))
+      words))
+
+(defun remember-turn (words)
+  "Record WORDS as the previous (resolved) turn, for the next follow-up to lean on."
+  (setf *last-turn* (copy-list words)))
+
+(defun ask (input)
+  "Conversational query: resolve a follow-up against the previous turn, answer it, and
+   remember the resolved turn.  INPUT is a sentence string or a word list.  Returns the
+   answer word list (or NIL)."
+  (let* ((words    (as-words input))
+	 (resolved (resolve-followup words))
+	 (answer   (or (infer-answer resolved)    ; accurate concept-graph answer first
+		       (respond resolved))))        ; fall back to direct association
+    (remember-turn resolved)
+    answer))
+
 (defun main ()
   "Interactive continual-learning teaching loop.  Each turn:
      1. read an input sentence (terminated by . ! or ?),
@@ -74,7 +121,9 @@
      (let ((in (words-of (create-line))))
        (when (or (null in) (quit-line-p in))
 	 (return))
-       (let ((guess (respond in)))
+       (let* ((resolved (resolve-followup in))   ; conversation memory: fold in the previous turn
+	      (guess (respond resolved)))
+	 (remember-turn resolved)
 	 (format t "  guess: ~a~%"
 		 (if guess (format nil "~{~a~^ ~}" guess) "(I don't know)"))
 	 (format t "teach> ")
@@ -84,12 +133,12 @@
 		  (return))
 		 ((confirm-p teacher)
 		  (cond (guess
-			 (learn in guess)
+			 (learn resolved guess)
 			 (format t "  (reinforced)~%"))
 			(t
 			 (format t "  (nothing to confirm -- give the answer)~%"))))
 		 (t
-		  (learn in teacher)
+		  (learn resolved teacher)
 		  (format t "  (learned)~%")))))))
   (save-network)
   (format t "~&(memory saved to ~a)~%" *save-file*)

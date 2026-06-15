@@ -487,6 +487,43 @@
            (prog1 (equal '("horse") (respond "say horse"))
              (ignore-errors (delete-file tmp)))))
 
+  ;; ===================== Conversation memory (follow-ups) =====================
+  (format t "~%Conversation memory tests~%")
+  (reset)
+  (train-from-file "training-set.txt" :verbose nil)
+  (check "ask answers a direct question (do dogs have legs -> yes)"
+         (equal '("yes") (ask "do dogs have legs?")))
+  (check "follow-up 'and cats?' resolves against the previous turn"
+         (equal '("do" "cats" "have" "legs") (resolve-followup '("and" "cats"))))
+  (check "ask resolves + answers a follow-up (and cats? -> yes)"
+         (equal '("yes") (ask "and cats?")))
+  (check "ask resolves + answers 'what about snakes?' -> no"
+         (equal '("no") (ask "what about snakes?")))
+  (check "a full sentence is not treated as a follow-up"
+         (progn (remember-turn '("do" "dogs" "have" "legs"))
+                (equal '("the" "moon" "glows") (resolve-followup '("the" "moon" "glows")))))
+
+  ;; ===================== Template / fragment composition =====================
+  (format t "~%Composition tests~%")
+  (reset)
+  (learn "what is a dog" "a dog is an animal")
+  (learn "what is a cat" "a cat is an animal")
+  (check "composes a novel sentence for an unseen subject (horse)"
+         (equal '("a" "horse" "is" "an" "animal") (respond "what is a horse")))
+  (check "composes for another unseen subject (llama)"
+         (equal '("a" "llama" "is" "an" "animal") (compose '("what" "is" "a" "llama"))))
+  (check "a single example does not yet compose"
+         (progn (reset) (learn "what is a dog" "a dog is an animal")
+                (null (compose '("what" "is" "a" "horse")))))
+  (check "templates persist across save / reload"
+         (let ((tmp "tmpl-temp.sexp"))
+           (reset)
+           (learn "what is a dog" "a dog is an animal")
+           (learn "what is a cat" "a cat is an animal")
+           (save-network tmp) (reset) (load-network tmp)
+           (prog1 (equal '("a" "horse" "is" "an" "animal") (respond "what is a horse"))
+             (ignore-errors (delete-file tmp)))))
+
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
 	  (if (zerop *tests-failed*) "ALL TESTS PASSED" "SOME TESTS FAILED"))

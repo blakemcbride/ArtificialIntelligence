@@ -67,6 +67,12 @@
     (maphash (lambda (cue w) (push (cons cue w) acc)) *copy-cues*)
     acc))
 
+(defun templates->alist ()
+  "Flatten *templates* (frame -> alist of (template . strength)) to a serialisable alist."
+  (let (acc)
+    (maphash (lambda (frame cells) (push (cons frame cells) acc)) *templates*)
+    acc))
+
 (defun hash->id-alist (table)
   "Alist of (key . neuron-id) for a string -> neuron hash table."
   (let (acc)
@@ -85,7 +91,8 @@
 		   :responses (hash->id-alist *responses*)
 		   :concept-states (hash->id-alist *concepts*)
 		   :concept-edges (concept-edges->list)
-		   :copy-cues (copy-cues->alist))
+		   :copy-cues (copy-cues->alist)
+		   :templates (templates->alist))
 	     s)
       (terpri s)))
   path)
@@ -136,6 +143,8 @@
 	      (setf (gethash b tab) w))))))
     (dolist (pair (getf data :copy-cues))
       (setf (gethash (car pair) *copy-cues*) (cdr pair)))
+    (dolist (pair (getf data :templates))
+      (setf (gethash (car pair) *templates*) (cdr pair)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
