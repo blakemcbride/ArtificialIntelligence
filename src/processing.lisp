@@ -30,6 +30,10 @@
 (use-package "concepts")     ; note-relationship (auto-populate the concept graph)
 (require "attention")
 (use-package "attention")    ; note-copy / copy-response (the fast-weight attention head)
+(require "operations")
+(use-package "operations")   ; run-operation / note-operation (learned operations over knowledge)
+(require "vectors")
+(use-package "vectors")      ; note-cooccurrence (distributed concept vectors, similarity by geometry)
 
 ;;; The Processing component (Plan.md) bridges the input and output networks.  After
 ;;; an input sentence is built, build-structure returns a set of "meaning" neurons
@@ -126,8 +130,10 @@
    nothing is recalled, a learned template may compose one.  Secondary values are the
    winning root and its activation.  No weights change here."
   (let* ((input-words (as-words input))
-	 (copied (copy-response input-words)))            ; 1. attention copy head (say X -> X)
+	 (copied (copy-response input-words))             ; 1. attention copy head (say X -> X)
+	 (op (run-operation input-words)))                ; 0. learned operation over knowledge
     (cond
+      (op (values op nil 0.0))
       (copied (values copied nil 0.0))
       (t (let ((composed (compose input-words)))          ; 2. compose from a learned template
 	   (cond
@@ -213,7 +219,13 @@
    the update -- what it would have said.
      correct guess   -> reinforce that pathway (associate)
      wrong / unknown -> weaken the wrong pathway (if any) and teach the correct one
-   Finally the correct root's threshold adapts and unused associations decay."
+   Finally the correct root's threshold adapts and unused associations decay.
+   If CORRECT is an operation answer (e.g. \"count animals\"), instead learn what the
+   question MEANS (note-operation) and return early -- no literal answer is stored."
+  (when (operation-answer-p (as-words correct))
+    (let ((guess (respond (as-words input))))
+      (note-operation (as-words input) (as-words correct))
+      (return-from learn guess)))
   (let* ((input-words   (as-words input))
 	 (correct-words (as-words correct))
 	 (endings       (build-structure (intern-words input-words)))
@@ -229,4 +241,5 @@
     (note-relationship input-words correct-words)   ; also grow the concept graph (Phase 7)
     (note-copy input-words correct-words)           ; also learn copy cues (attention head)
     (note-template input-words correct-words)       ; also learn response templates (composition)
+    (note-cooccurrence (append input-words correct-words)) ; also grow the distributed concept vectors
     guess))

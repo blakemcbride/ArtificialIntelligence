@@ -306,6 +306,39 @@ and resets with the rest of the system.
 Open: pronoun / coreference resolution (only ellipsis is handled today); multi-slot and
 multi-word-filler templates; composing from several fragments rather than one template.
 
+### 3.8 Learned operations and distributed concept vectors
+
+Two further additions, aimed at *understanding* (a computed answer) and at *non-brittleness*
+(graceful interpolation), within the two constraints (continual + Hebbian, no backprop).
+
+**Learned operations** (`operations.lisp`).  A fact is stored; an *operation* is computed
+over the current knowledge, so its answer changes as the system learns ("how many animals
+do you know" rises when you teach a new animal).  The design is a small set of general
+primitives (`count`, `similar`) plus a **learned** mapping from a question phrasing to
+(operation + category slot): teach "how many animals do you know → count animals" once and
+it generalizes to any category via the slot.  Membership is found **generically** — the
+positive "are/is _ C" frame that the most subjects share (the shared frame accumulates
+members; idiosyncratic decompositions don't), so it works for any category, not a fixed
+list.  This is *not* a per-question function; the count primitive is reused.  Honest line:
+a small primitive substrate is innate (like the brain's), the language that triggers it is
+learned.
+
+**Distributed concept vectors** (`vectors.lisp`) — the CMAC / sparse-distributed-memory /
+hyperdimensional direction.  Non-brittleness comes from distributed, continuous
+representations: a novel thing lands *near* known ones and interpolates instead of falling
+off the symbolic cliff.  Each concept is a high-dimensional vector built online by
+superposing the random codes of the words it co-occurs with (Hebbian accumulation, IDF-
+weighted, mean-centered) — a few vector adds per fact, no backprop.  Similarity becomes
+geometry: dog↔cat and red↔blue clusters *emerge* from shared company, and a word from one
+fact generalizes by proximity.  **Empirical head-to-head:** the vectors win decisively at
+similarity and graceful generalization (used now for follow-up resolution and a `similar`
+operation), but they do *not* give crisp counts — category labels don't sit near their
+members, and there is no clean membership boundary (similarity decays continuously).  So the
+discrete concept graph stays the home of crisp set-operations while the vectors provide
+non-brittle similarity: **the two are complementary**, which is the real finding.  Open:
+binding answer-polarity into the codes (plain co-occurrence ignores yes/no, so legless
+animals drift toward birds); a hybrid non-brittle membership; richer learned embeddings.
+
 ---
 
 ## Part 4 — The build plan (phased, each phase independently testable)
@@ -482,6 +515,21 @@ continual-learning behavior can be regression-checked.
 - **Done when:** ✓ after "do dogs have legs?", "and cats?" → yes (resolved to "do cats have
       legs"); taught "what is a dog/cat", "what is a horse?" → "a horse is an animal". 9 new
       tests; suite now **124**, green on SBCL.  See §3.7 / `Future.md`.
+
+### Phase 7d — Learned operations + distributed concept vectors  ✅ done
+- [x] **Learned operations** (`operations.lisp`): general primitives `count` / `similar` +
+      a learned question→operation mapping (`*op-templates*`, persisted).  Taught once,
+      "how many animals do you know" counts **generically** (any category, by the shared
+      membership frame) and rises as the system learns; "what is similar to X" returns
+      related concepts.  `respond` runs an operation before copy/compose/recall.
+- [x] **Distributed concept vectors** (`vectors.lisp`): online Hebbian co-occurrence vectors
+      (`*cooccur*`, persisted), IDF-weighted + mean-centered; `similarity` / `nearest` now
+      drive follow-up resolution and the `similar` operation.  Empirically great for
+      similarity / graceful generalization, not for crisp counting — complementary to the
+      concept graph (see §3.8).
+- **Done when:** ✓ "how many <category> do you know" generic; dog↔cat / red↔blue clusters
+      emerge from co-occurrence; follow-ups resolve by vector similarity.  9 new tests;
+      suite now **138**, green on SBCL.  See §3.8 / `Future.md`.
 
 ### Phase 8 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network

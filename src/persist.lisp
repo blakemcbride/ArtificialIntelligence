@@ -73,6 +73,21 @@
     (maphash (lambda (frame cells) (push (cons frame cells) acc)) *templates*)
     acc))
 
+(defun op-templates->alist ()
+  "Flatten *op-templates* ((frame . op) -> strength) to a serialisable alist."
+  (let (acc)
+    (maphash (lambda (k v) (push (cons k v) acc)) *op-templates*)
+    acc))
+
+(defun cooccur->alist ()
+  "Flatten *cooccur* (word -> word -> count) to a nested alist (word . ((other . n) ...))."
+  (let (acc)
+    (maphash (lambda (w tab)
+	       (let (inner) (maphash (lambda (o n) (push (cons o n) inner)) tab)
+		    (push (cons w inner) acc)))
+	     *cooccur*)
+    acc))
+
 (defun hash->id-alist (table)
   "Alist of (key . neuron-id) for a string -> neuron hash table."
   (let (acc)
@@ -92,7 +107,9 @@
 		   :concept-states (hash->id-alist *concepts*)
 		   :concept-edges (concept-edges->list)
 		   :copy-cues (copy-cues->alist)
-		   :templates (templates->alist))
+		   :templates (templates->alist)
+		   :op-templates (op-templates->alist)
+		   :cooccur (cooccur->alist))
 	     s)
       (terpri s)))
   path)
@@ -145,6 +162,12 @@
       (setf (gethash (car pair) *copy-cues*) (cdr pair)))
     (dolist (pair (getf data :templates))
       (setf (gethash (car pair) *templates*) (cdr pair)))
+    (dolist (pair (getf data :op-templates))
+      (setf (gethash (car pair) *op-templates*) (cdr pair)))
+    (dolist (pair (getf data :cooccur))
+      (let ((tab (make-hash-table :test 'equal)))
+	(dolist (oc (cdr pair)) (setf (gethash (car oc) tab) (cdr oc)))
+	(setf (gethash (car pair) *cooccur*) tab)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))

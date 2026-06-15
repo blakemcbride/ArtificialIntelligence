@@ -28,6 +28,10 @@
 	   "*COPY-CUES*"
 	   "*TEMPLATES*"
 	   "*LAST-TURN*"
+	   "*OP-TEMPLATES*"
+	   "*COOCCUR*"
+	   "*VCACHE*"
+	   "*VEC-MEAN*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -47,6 +51,10 @@
 (defparameter *copy-cues* (make-hash-table :test 'equal)) ; cue word -> strength: learned "copy the next word" triggers (attention head)
 (defparameter *templates* (make-hash-table :test 'equal)) ; frame string -> alist of (template . strength): learned response templates (composition)
 (defparameter *last-turn* nil) ; the previous resolved input words: conversation memory (transient; not persisted)
+(defparameter *op-templates* (make-hash-table :test 'equal)) ; (frame . op) -> strength: learned question->operation mappings
+(defparameter *cooccur* (make-hash-table :test 'equal)) ; word -> (hash word -> count): co-occurrence counts behind the distributed concept vectors
+(defparameter *vcache* (make-hash-table :test 'equal)) ; derived concept-vector cache (rebuilt from *cooccur*; cleared on reset/reload)
+(defparameter *vec-mean* nil)                          ; cached global mean of concept vectors
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -58,7 +66,11 @@
   (setq *concept-graph* (make-hash-table :test 'eq))
   (setq *copy-cues* (make-hash-table :test 'equal))
   (setq *templates* (make-hash-table :test 'equal))
-  (setq *last-turn* nil))
+  (setq *last-turn* nil)
+  (setq *op-templates* (make-hash-table :test 'equal))
+  (setq *cooccur* (make-hash-table :test 'equal))
+  (setq *vcache* (make-hash-table :test 'equal))
+  (setq *vec-mean* nil))
 
 (defstruct neuron
   "An unnamed neuron"

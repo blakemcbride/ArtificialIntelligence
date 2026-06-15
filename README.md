@@ -46,13 +46,16 @@ that produces the category generalization described above, a transformer-like *a
 head* — built as Hebbian fast weights — that handles copy/binding (the original goal of
 `say X → X` for a word never seen), *conversation memory* that resolves follow-ups against
 the previous turn, *template composition* that assembles novel replies from learned
-fragments, an interactive teaching loop, knowledge-base persistence, an importable training
-set, and an automated test suite.
+fragments, *learned operations* over its own knowledge (taught once, "how many animals do
+you know" counts them — generically, for any category — and the answer rises as it learns),
+*distributed concept vectors* that give non-brittle similarity ("what is similar to a lion"
+→ other animals), an interactive teaching loop, knowledge-base persistence, an importable
+training set, and an automated test suite.
 
 The system is now functional end to end. You can teach it, and it learns, generalizes to
 things it was never directly taught, and remembers across sessions — all through local
 Hebbian learning, with no backpropagation and no separate training phase. It also ships
-with a broad **starter knowledge base** (`src/knowledge-base.txt`, ~1,770 facts) that `main`
+with a broad **starter knowledge base** (`src/knowledge-base.txt`, ~1,850 facts) that `main`
 learns automatically the first time it runs, so a fresh system already answers questions,
 copies, and composes out of the box.
 
@@ -82,6 +85,16 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 ;; composition -- a reply assembled from learned fragments, never seen verbatim:
 (learn "what is a dog" "a dog is an animal") (learn "what is a cat" "a cat is an animal")
 (respond "what is a horse")                        ; => ("a" "horse" "is" "an" "animal")
+
+;; learned operations -- teach what the question MEANS once; the answer is computed over
+;; current knowledge and generalizes to any category:
+(learn "how many animals do you know" "count animals")
+(respond "how many animals do you know")           ; => ("110")   (rises as you teach more)
+(respond "how many colors do you know")            ; => ("11")    (generalized via the slot)
+
+;; distributed similarity, learned from co-occurrence (meaning as geometry):
+(learn "what is similar to dog" "similar dog")
+(respond "what is similar to lion")                ; => (monkey kangaroo dolphin gorilla ...)
 
 (main)   ; interactive session; on a fresh start it auto-learns knowledge-base.txt first
 ```

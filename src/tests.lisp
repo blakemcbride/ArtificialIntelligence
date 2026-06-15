@@ -19,6 +19,8 @@
 (load "output.lisp")
 (load "concepts.lisp")
 (load "attention.lisp")
+(load "vectors.lisp")
+(load "operations.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
 (load "ai.lisp")   ; loaded last; its use-package forms bring every component's
@@ -537,6 +539,45 @@
            (equal '("a" "hippo" "is" "an" "animal") (respond "what is a hippo")))
     (check "starter KB: a trait question generalizes (are tigers animals -> yes)"
            (equal '("yes") (ask "are tigers animals?"))))
+
+  ;; ===================== Learned operations (how many X do you know) =====================
+  (format t "~%Learned-operation tests~%")
+  (reset)
+  (train-from-file "knowledge-base.txt" :verbose nil)
+  (check "operation: unknown before it is taught"
+         (null (run-operation '("how" "many" "animals" "do" "you" "know"))))
+  (learn "how many animals do you know" "count animals")     ; teach what the question MEANS
+  (let ((animals (parse-integer (first (ask "how many animals do you know?")))))
+    (check "operation: how many animals -> a positive count (computed)" (> animals 5))
+    (check "operation generalizes to a new category via the slot (mammals)"
+           (> (parse-integer (first (ask "how many mammals do you know?"))) 0))
+    (check "operation: the count rises as the system learns a new member"
+           (progn (learn "are dragons animals" "yes")
+                  (> (parse-integer (first (ask "how many animals do you know?"))) animals)))
+    (check "operation mapping persists across save / reload"
+           (let ((tmp "op-temp.sexp"))
+             (save-network tmp) (reset) (load-network tmp)
+             (prog1 (and (run-operation '("how" "many" "animals" "do" "you" "know")) t)
+               (ignore-errors (delete-file tmp))))))
+
+  ;; ===================== Distributed concept vectors (similarity by geometry) ===========
+  (format t "~%Distributed-vector tests~%")
+  (reset)
+  (train-from-file "knowledge-base.txt" :verbose nil)
+  (check "vectors: same-category similarity beats cross-category (dog~cat > dog~car)"
+         (> (similarity "dog" "cat") (similarity "dog" "car")))
+  (check "vectors: nearest neighbour of dog is an animal"
+         (member (car (first (nearest "dog" 1)))
+                 '("cat" "horse" "cow" "lion" "tiger" "wolf" "fox" "pig" "monkey" "kangaroo")
+                 :test #'string=))
+  (learn "what is similar to dog" "similar dog")     ; teach the 'similar' operation (geometry)
+  (check "operation: 'what is similar to X' returns related words"
+         (let ((r (ask "what is similar to horse"))) (and r (> (length r) 1))))
+  (check "vectors persist across save / reload"
+         (let ((tmp "vec-temp.sexp") (before (similarity "dog" "cat")))
+           (save-network tmp) (reset) (load-network tmp)
+           (prog1 (> (similarity "dog" "cat") (* 0.9 before))
+             (ignore-errors (delete-file tmp)))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

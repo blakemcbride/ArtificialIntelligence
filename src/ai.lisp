@@ -30,6 +30,12 @@
 (require "attention")
 (use-package "attention")
 
+(require "vectors")
+(use-package "vectors")
+
+(require "operations")
+(use-package "operations")
+
 (require "processing")
 (use-package "processing")
 
@@ -82,10 +88,10 @@
    its most concept-similar word replaced by this fragment's best-matching word; otherwise
    return WORDS unchanged."
   (if (and (followup-p words) *last-turn*)
-      (let ((best 0) (fw nil) (lw nil))
+      (let ((best 0.0) (fw nil) (lw nil))
 	(dolist (a words)
 	  (dolist (b *last-turn*)
-	    (let ((s (concept-similarity a b)))
+	    (let ((s (similarity a b)))   ; distributed-vector similarity (smoother than the graph)
 	      (when (> s best) (setf best s fw a lw b)))))
 	(if fw (substitute fw lw *last-turn* :test #'string=) words))
       words))

@@ -289,6 +289,33 @@ system can fill it for a brand-new word, composing a sentence it was never taugh
 It takes a couple of examples before a template is trusted (`*compose-threshold*`), so a
 one-off coincidence never composes.
 
+### Operations and similarity — answers it *computes*
+
+Some questions aren't facts to look up — their answer is *computed* over what the system
+currently knows, and changes as it learns. You teach what the question **means** once (not a
+hard-coded function), and it generalizes to any category:
+
+```lisp
+(learn "how many animals do you know" "count animals")   ; teach the MEANING, once
+(respond "how many animals do you know")   ; => ("110")  (goes up when you teach a new animal)
+(respond "how many colors do you know")    ; => ("11")   (generalized to a category never asked)
+```
+
+The system also learns a **distributed concept space** from co-occurrence — things used in
+similar company drift together — so it can answer "what is like this?" by geometry, and a
+novel word lands near its kin instead of falling off a cliff:
+
+```lisp
+(learn "what is similar to dog" "similar dog")
+(respond "what is similar to lion")        ; => (monkey kangaroo dolphin gorilla squirrel)
+(similarity "dog" "cat")                   ; => ~0.8   (same company)
+(similarity "dog" "car")                   ; => ~0.5   (different company)
+```
+
+(Honest note: this similarity space is great for "what's like X" and for resolving
+follow-ups, but it has no crisp boundaries — so *counting* a category stays with the exact
+concept graph, while similarity uses the vectors. The two are complementary.)
+
 ---
 
 ## 5. A complete worked example
@@ -372,6 +399,8 @@ s-expression — you can peek at it.
 | Bulk-teach from a file | `(train-from-file "file.txt")` |
 | Get the system's answer to an input | `(respond "Do cats purr?")` |
 | Ask conversationally (resolves follow-ups) | `(ask "and cats?")` |
+| Ask a computed question (learned operation) | `(respond "how many animals do you know")` |
+| Find similar concepts (distributed vectors) | `(nearest "dog")` / `(similarity "dog" "cat")` |
 | Ask if an input generalizes to an answer | `(infer-p "Do horses walk on their legs?" "yes")` |
 | Get the generalization strength (+ subject) | `(infer-strength "Do horses walk on their legs?" "yes")` |
 | Save / load a knowledge base | `(export-kb "f.sexp")` / `(import-kb "f.sexp")` |

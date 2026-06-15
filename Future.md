@@ -32,9 +32,16 @@ These would most make it *feel* like an LLM while staying true to the design:
 - **Paraphrase tolerance.** A user says the same thing many ways ("do dogs walk?", "can a
   dog walk?", "dogs — do they?") and expects the same understanding. Needs synonym /
   rephrasing generalization on the input side, stronger than today's exact-frame matching.
-- **Following simple instructions / operations.** "Is X a Y?", "what's the opposite of X",
-  classify, compare, copy. These are *learnable operations* — the system already has two
-  (categorize via the concept graph, copy via attention); more can be added the same way.
+- **Following simple instructions / operations.** ✅ **Started** (`operations.lisp`;
+  `Plan.md` §3.8): *learned operations* over the system's own knowledge — you teach what a
+  question MEANS once ("how many animals do you know → count animals") and it generalizes to
+  any category and is recomputed as the system learns. `count` and `similar` exist; more
+  (compare, exists, list) are additions of the same shape.
+- **Distributed representations (non-brittleness).** ✅ **Started** (`vectors.lisp`;
+  `Plan.md` §3.8): Hebbian co-occurrence concept vectors (CMAC / hyperdimensional family)
+  give similarity as geometry — dog↔cat clusters emerge, novel words interpolate, no cliff.
+  Strong for similarity/generalization; crisp counting stays with the discrete graph (no
+  clean boundary in the vector space). The two are complementary.
 - **Chained reasoning.** "A is a B, B's are C, so A is C." Multi-hop over the knowledge;
   spreading activation is a start.
 
