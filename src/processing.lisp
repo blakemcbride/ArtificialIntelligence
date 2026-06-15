@@ -116,13 +116,14 @@
 		     (> (neuron-current-value root) (neuron-current-value winner))))
 	(setq winner root)))))
 
-(defun respond (input-words)
-  "Given an input sentence (a list of word strings), build/refresh its input
-   structure, spread activation from its meaning neurons across the associations to
-   the output roots, and return the word list of the best-scoring response -- or NIL
-   if nothing clears threshold (\"I don't know\").  Secondary values are the winning
-   root and its activation.  Building is monotonic; no weights change here."
-  (let* ((endings (build-structure (intern-words input-words)))
+(defun respond (input)
+  "Given an input sentence (a string, e.g. \"Do cats purr?\", or a list of words),
+   build/refresh its input structure, spread activation from its meaning neurons across
+   the associations to the output roots, and return the word list of the best-scoring
+   response -- or NIL if nothing clears threshold (\"I don't know\").  Secondary values
+   are the winning root and its activation.  Building is monotonic; no weights change."
+  (let* ((input-words (as-words input))
+	 (endings (build-structure (intern-words input-words)))
 	 (winner  (select-winner (spread-activation endings))))
     (if winner
 	(values (produce-output winner) winner (neuron-current-value winner))
@@ -195,18 +196,21 @@
 	(+ (* (- 1.0 *threshold-rate*) (neuron-threshold root))
 	   (* *threshold-rate* *threshold-fraction* activation))))
 
-(defun learn (input-words correct-words)
-  "One teacher-confirmed turn of continual learning.  Build the input, see what the
-   system WOULD answer, then apply the reward-modulated update toward CORRECT-WORDS and
-   a global decay step.  Returns the system's guess (word list or nil) BEFORE the
-   update -- what it would have said.
+(defun learn (input correct)
+  "One teacher-confirmed turn of continual learning.  INPUT and CORRECT may each be a
+   sentence string (e.g. \"Do cats purr?\" / \"yes\") or a list of words.  Build the
+   input, see what the system WOULD answer, then apply the reward-modulated update toward
+   CORRECT and a global decay step.  Returns the system's guess (word list or nil) BEFORE
+   the update -- what it would have said.
      correct guess   -> reinforce that pathway (associate)
      wrong / unknown -> weaken the wrong pathway (if any) and teach the correct one
    Finally the correct root's threshold adapts and unused associations decay."
-  (let* ((endings      (build-structure (intern-words input-words)))
-	 (guess-root   (select-winner (spread-activation endings)))
-	 (guess        (and guess-root (produce-output guess-root)))
-	 (correct-root (build-output-structure correct-words)))
+  (let* ((input-words   (as-words input))
+	 (correct-words (as-words correct))
+	 (endings       (build-structure (intern-words input-words)))
+	 (guess-root    (select-winner (spread-activation endings)))
+	 (guess         (and guess-root (produce-output guess-root)))
+	 (correct-root  (build-output-structure correct-words)))
     (unless (eq guess-root correct-root)
       (when guess-root (weaken endings guess-root)))
     (associate endings correct-root)

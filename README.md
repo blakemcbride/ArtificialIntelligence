@@ -62,9 +62,9 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
              "concepts" "processing" "persist" "ai"))
   (load (format nil "~a.lisp" f)))
 
-(train-from-file "training-set.txt")                            ; learn a starter knowledge base
-(infer-p '("do" "horses" "walk" "on" "their" "legs") '("yes")) ; => T   (generalized)
-(infer-p '("do" "snakes" "walk" "on" "their" "legs") '("yes")) ; => NIL (excluded)
+(train-from-file "training-set.txt")               ; learn a starter knowledge base
+(infer-p "Do horses walk on their legs?" "yes")    ; => T   (generalized)
+(infer-p "Do snakes walk on their legs?" "yes")    ; => NIL (excluded)
 
 (main)   ; or start an interactive teaching session
 ```

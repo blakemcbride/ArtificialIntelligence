@@ -165,22 +165,25 @@
       (loop for i from 0 for w in input-words
 	    do (relate w (frame-without input-words i) answer)))))
 
-(defun infer-strength (input-words answer-words)
-  "Slot-free query: treating each input word in turn as the subject, how strongly does
+(defun infer-strength (input answer)
+  "Slot-free query.  INPUT and ANSWER may each be a sentence string (it is tokenized) or
+   a list of words.  Treating each input word in turn as the subject, how strongly does
    the rest-of-sentence frame categorize it as ANSWER?  Returns (values best-strength
    winning-subject winning-frame)."
-  (let ((answer (format nil "~{~a~^ ~}" answer-words))
-	(best 0.0) (who nil) (frame nil))
+  (let* ((input-words (as-words input))
+	 (answer-str  (format nil "~{~a~^ ~}" (as-words answer)))
+	 (best 0.0) (who nil) (frame nil))
     (loop for i from 0 for w in input-words
 	  for fr = (frame-without input-words i)
-	  for s = (category-strength w fr answer)
+	  for s = (category-strength w fr answer-str)
 	  when (> s best) do (setf best s who w frame fr))
     (values best who frame)))
 
-(defun infer-p (input-words answer-words)
+(defun infer-p (input answer)
   "Adaptive, slot-free: does the best word-as-subject decomposition clear its category's
-   member baseline?"
-  (multiple-value-bind (s who frame) (infer-strength input-words answer-words)
-    (declare (ignore who))
-    (and frame
-	 (recognized-strength-p s frame (format nil "~{~a~^ ~}" answer-words)))))
+   member baseline?  INPUT and ANSWER may be sentence strings or word lists, e.g.
+   (infer-p \"Do horses walk on their legs?\" \"yes\")."
+  (let ((answer-str (format nil "~{~a~^ ~}" (as-words answer))))
+    (multiple-value-bind (s who frame) (infer-strength input answer)
+      (declare (ignore who))
+      (and frame (recognized-strength-p s frame answer-str)))))

@@ -444,6 +444,22 @@
            (not (infer-p '("do" "snakes" "walk" "on" "their" "legs") '("yes"))))
     (ignore-errors (delete-file tmp)))
 
+  ;; ===================== String interface (parse sentences) =====================
+  (format t "~%String interface tests~%")
+  (check "tokenize lowercases and strips terminal punctuation"
+         (equal '("do" "cats" "purr") (tokenize "Do cats purr?")))
+  (reset)
+  (train-from-file "training-set.txt" :verbose nil)
+  (check "infer-p accepts a sentence string (horse generalizes in)"
+         (infer-p "Do horses walk on their legs?" "yes"))
+  (check "infer-p (string) still excludes snakes"
+         (not (infer-p "Do snakes walk on their legs?" "yes")))
+  (reset)
+  (check "learn accepts strings (nil on a blank system)"
+         (null (learn "Do cats purr?" "yes")))
+  (check "respond accepts a string and recalls"
+         (equal '("yes") (respond "Do cats purr?")))
+
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
 	  (if (zerop *tests-failed*) "ALL TESTS PASSED" "SOME TESTS FAILED"))

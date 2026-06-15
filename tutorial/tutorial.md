@@ -35,13 +35,13 @@ From a shell, in the `src/` directory, start SBCL and paste these:
 (train-from-file "training-set.txt")
 
 ;; 3. ask something it was taught
-(infer-p '("do" "dogs" "walk" "on" "their" "legs") '("yes"))    ; => T
+(infer-p "Do dogs walk on their legs?" "yes")    ; => T
 
 ;; 4. ask about a creature it was NEVER taught to walk -- it generalizes
-(infer-p '("do" "horses" "walk" "on" "their" "legs") '("yes"))  ; => T
+(infer-p "Do horses walk on their legs?" "yes")  ; => T
 
 ;; 5. ask about a legless animal -- it is excluded
-(infer-p '("do" "snakes" "walk" "on" "their" "legs") '("yes"))  ; => NIL
+(infer-p "Do snakes walk on their legs?" "yes")  ; => NIL
 ```
 
 If those five lines behaved as shown, everything works. The rest of this tutorial explains
@@ -142,14 +142,14 @@ do fish fly => no
 
 …and `(train-from-file "my-facts.txt")`.
 
-You can also teach a single pair from code — `learn` takes two lists of lowercase words and
-returns what the system *would* have answered *before* this lesson (handy for scoring). On a
-blank system the first answer is `NIL`:
+You can also teach a single pair from code — `learn` takes an input and an answer (each a
+sentence string or a word list) and returns what the system *would* have answered *before*
+this lesson (handy for scoring). On a blank system the first answer is `NIL`:
 
 ```lisp
 (reset)
-(learn '("do" "cats" "purr") '("yes"))   ; => NIL     (a blank system knows nothing yet)
-(learn '("do" "cats" "purr") '("yes"))   ; => ("yes")  (now it recalls it -- and reinforces)
+(learn "Do cats purr?" "yes")   ; => NIL     (a blank system knows nothing yet)
+(learn "Do cats purr?" "yes")   ; => ("yes")  (now it recalls it -- and reinforces)
 ```
 
 ---
@@ -165,8 +165,8 @@ There are two ways to query, and they answer different questions.
 taught `cats purr`):
 
 ```lisp
-(respond '("do" "cats" "purr"))     ; => ("yes")
-(respond '("what" "is" "this"))     ; => NIL   (no idea)
+(respond "Do cats purr?")     ; => ("yes")
+(respond "What is this?")     ; => NIL   (no idea)
 ```
 
 It returns the answer as a list of words, or `NIL` for "I don't know."
@@ -179,17 +179,17 @@ inputs the system was *never directly taught*, by reasoning over the **concept g
 
 ```lisp
 ;; horses were taught they have legs / feet / are animals -- but NEVER that they walk.
-(infer-p '("do" "horses" "walk" "on" "their" "legs") '("yes"))   ; => T   (generalized!)
+(infer-p "Do horses walk on their legs?" "yes")   ; => T   (generalized!)
 
 ;; snakes were taught they are legless -- so they are excluded
-(infer-p '("do" "snakes" "walk" "on" "their" "legs") '("yes"))   ; => NIL
+(infer-p "Do snakes walk on their legs?" "yes")   ; => NIL
 ```
 
 `infer-strength` returns the underlying number (higher = stronger membership) and, as a
 second value, which word it treated as the subject:
 
 ```lisp
-(infer-strength '("do" "horses" "walk" "on" "their" "legs") '("yes"))
+(infer-strength "Do horses walk on their legs?" "yes")
 ;; => 0.025...   and second value "horses"
 ```
 
@@ -212,13 +212,13 @@ were taught they walk on their legs; `horses` and `birds` were taught everything
 that:
 
 ```lisp
-(infer-p '("do" "dogs"   "walk" "on" "their" "legs") '("yes"))  ; T  (recall)
-(infer-p '("do" "horses" "walk" "on" "their" "legs") '("yes"))  ; T  (generalized in)
-(infer-p '("do" "birds"  "walk" "on" "their" "legs") '("yes"))  ; T  (generalized in)
-(infer-p '("do" "snakes" "walk" "on" "their" "legs") '("yes"))  ; NIL (legless animal)
-(infer-p '("do" "tables" "walk" "on" "their" "legs") '("yes"))  ; NIL (has legs, but not an animal, doesn't move)
-(infer-p '("do" "rocks"  "walk" "on" "their" "legs") '("yes"))  ; NIL
-(infer-p '("do" "glorps" "walk" "on" "their" "legs") '("yes"))  ; NIL (unknown word)
+(infer-p "Do dogs walk on their legs?"   "yes")  ; T  (recall)
+(infer-p "Do horses walk on their legs?" "yes")  ; T  (generalized in)
+(infer-p "Do birds walk on their legs?"  "yes")  ; T  (generalized in)
+(infer-p "Do snakes walk on their legs?" "yes")  ; NIL (legless animal)
+(infer-p "Do tables walk on their legs?" "yes")  ; NIL (has legs, but not an animal, doesn't move)
+(infer-p "Do rocks walk on their legs?"  "yes")  ; NIL
+(infer-p "Do glorps walk on their legs?" "yes")  ; NIL (unknown word)
 ```
 
 That is the goal in action: it **teases out the general idea** ("legged, walking, moving
@@ -275,17 +275,19 @@ s-expression — you can peek at it.
 | You want to… | Call |
 |---|---|
 | Start an interactive teaching session | `(main)` |
-| Teach one pair from code | `(learn '(input words) '(answer words))` |
+| Teach one pair from code | `(learn "Cats purr." "yes")` |
 | Bulk-teach from a file | `(train-from-file "file.txt")` |
-| Get the system's answer to an input | `(respond '(input words))` |
-| Ask if an input generalizes to an answer | `(infer-p '(input words) '(answer words))` |
-| Get the generalization strength (+ subject) | `(infer-strength '(input words) '(answer words))` |
+| Get the system's answer to an input | `(respond "Do cats purr?")` |
+| Ask if an input generalizes to an answer | `(infer-p "Do horses walk on their legs?" "yes")` |
+| Get the generalization strength (+ subject) | `(infer-strength "Do horses walk on their legs?" "yes")` |
 | Save / load a knowledge base | `(export-kb "f.sexp")` / `(import-kb "f.sexp")` |
 | Wipe all memory | `(reset)` |
 | Print the internal neuron tree | `(dump-dictionary)` |
 
-Inputs and answers are always **lists of lowercase word strings**, e.g.
-`'("do" "horses" "run")` and `'("yes")`.
+Inputs and answers can be plain **sentence strings** — the system tokenizes them
+(lowercases, drops `.` `!` `?`) — or, if you prefer, lists of lowercase words. So
+`(infer-p "Do horses run?" "yes")` and `(infer-p '("do" "horses" "run") '("yes"))` are
+equivalent.
 
 ---
 
@@ -305,7 +307,7 @@ Example: make generalization stricter just for one query:
 
 ```lisp
 (let ((*concept-fraction* 0.3))
-  (infer-p '("do" "horses" "walk" "on" "their" "legs") '("yes")))
+  (infer-p "Do horses walk on their legs?" "yes"))
 ```
 
 ---

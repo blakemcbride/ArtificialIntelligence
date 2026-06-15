@@ -99,19 +99,6 @@
 ;;; Blank lines and lines beginning with # or ; are ignored.  Each line is learned
 ;;; exactly as a teaching-loop turn would be (associations + concept graph).
 
-(defun split-words (string)
-  "Lowercase STRING and split it into whitespace-delimited word strings."
-  (let ((res '()) (i 0) (n (length string)))
-    (flet ((ws (c) (member c '(#\Space #\Tab #\Return #\Linefeed))))
-      (loop
-	(loop while (and (< i n) (ws (char string i))) do (incf i))
-	(when (>= i n) (return))
-	(let ((j i))
-	  (loop while (and (< j n) (not (ws (char string j)))) do (incf j))
-	  (push (string-downcase (subseq string i j)) res)
-	  (setf i j))))
-    (nreverse res)))
-
 (defun find-substring (needle haystack)
   "Index of the first occurrence of NEEDLE in HAYSTACK, or NIL."
   (let ((nl (length needle)) (hl (length haystack)))
@@ -132,8 +119,8 @@
 			     (member (char trimmed 0) '(#\# #\;)))
 		   (let ((sep (find-substring separator line)))
 		     (when sep
-		       (let ((in  (split-words (subseq line 0 sep)))
-			     (out (split-words (subseq line (+ sep (length separator))))))
+		       (let ((in  (tokenize (subseq line 0 sep)))
+			     (out (tokenize (subseq line (+ sep (length separator))))))
 			 (when (and in out)
 			   (learn in out)
 			   (incf count))))))))
