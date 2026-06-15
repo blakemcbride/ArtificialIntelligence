@@ -12,28 +12,20 @@ This is a research/personal project released to the public domain. It began as o
 
 There is no real build system. `src/Makefile` only provides `make clean` to remove Lisp fasl artifacts (`*.fas`, `*.fasl`, `*.lib`, `*.lx64fsl`).
 
-To run, load and start from a Common Lisp REPL **with the working directory set to `src/`**.
-
-The wrinkle is loading. `ai.lisp` pulls in the component files with bare `(require …)` forms. **CLISP** resolves those module names against the current directory, so under CLISP the one-line load just works (it transitively loads every component):
-
-```lisp
-;; CLISP, working directory = src/
-(load "ai.lisp")   ; transitively loads data-structures, line-input, input, output, processing, persist
-(main)             ; NOT (ai::main) — see note below
-```
-
-**SBCL, CCL, and ECL do not search the current directory for `require`**, so the bundled load fails there. On those (or to stay implementation-agnostic), load the three files explicitly by pathname in dependency order — each calls `(provide …)`, so the internal `require`s then become no-ops:
+To run, load and start from a Common Lisp REPL **with the working directory set to `src/`**
+(so relative paths — the training file, the saved knowledge base — resolve there). Load the
+whole system with one call:
 
 ```lisp
-(load "data-structures.lisp")
-(load "line-input.lisp")
-(load "input.lisp")
-(load "output.lisp")
-(load "processing.lisp")
-(load "persist.lisp")
-(load "ai.lisp")
-(main)
+(load "load.lisp")   ; loads every component in dependency order; works on all impls
+(main)               ; NOT (ai::main) — see note below
 ```
+
+`load.lisp` also defines `(load-system)`, which reloads everything after an edit. Under the
+hood it loads each component by pathname; each file `(provide …)`s, so the internal
+`(require …)` forms are no-ops. (CLISP alone can also `(load "ai.lisp")` directly — its
+`require` searches the current directory — but SBCL/CCL/ECL do not, which is why `load.lisp`
+loads by pathname.)
 
 `main` is an interactive teaching loop (Phase 5). Each turn it reads an **input** sentence, prints what it would answer (or "I don't know"), then reads a **teacher** line — the correct response, or a confirm word (`yes`/`y`/`right`/`correct`/`ok`) to accept a correct guess — and learns from it. It exits on `quit.`/`exit.` (or end-of-input) and prints the input neuron tree. It loads saved memory from `*save-file*` (default `ai-network.sexp` in the working directory) on entry and saves it on exit, so learning persists across runs.
 
@@ -47,7 +39,7 @@ For a manual end-to-end check of the teaching loop (lines alternate input / teac
 
 ```sh
 cd src
-printf '(load "ai.lisp")\n(main)\nsay hi.\nhi there.\nsay hi.\nyes.\nquit.\n(ext:quit)\n' | clisp -q
+printf '(load "load.lisp")\n(main)\nsay hi.\nhi there.\nsay hi.\nyes.\nquit.\n(ext:quit)\n' | clisp -q
 ```
 
 ## Architecture

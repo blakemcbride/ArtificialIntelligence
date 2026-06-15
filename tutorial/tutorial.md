@@ -27,9 +27,7 @@ From a shell, in the `src/` directory, start SBCL and paste these:
 
 ```lisp
 ;; 1. load the system (run this from inside src/)
-(dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "attention" "processing" "persist" "ai"))
-  (load (format nil "~a.lisp" f)))
+(load "load.lisp")
 
 ;; 2. import the starter knowledge base (105 facts)
 (train-from-file "training-set.txt")
@@ -51,20 +49,16 @@ each piece.
 
 ## 1. Loading the system
 
-The code is nine source files in `src/`, each its own package, plus `ai.lisp` (the
-top-level). They must load in dependency order. **Start your Lisp from inside `src/`** so
-that relative paths (the training file, the saved knowledge base) resolve there.
-
-**SBCL (the primary target):**
+The code is several source files in `src/`, each its own package, plus `ai.lisp` (the
+top-level). **Start your Lisp from inside `src/`** so that relative paths (the training
+file, the saved knowledge base) resolve there, then load everything with one call:
 
 ```lisp
-(dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "attention" "processing" "persist" "ai"))
-  (load (format nil "~a.lisp" f)))
+(load "load.lisp")    ; loads the whole system, in dependency order
 ```
 
-**CLISP** can use the one-liner `(load "ai.lisp")` (it finds the other files
-automatically); SBCL/CCL/ECL need the explicit list above.
+That also defines `(load-system)`, which reloads everything after you edit a source file.
+It works on SBCL, CLISP, CCL, and ECL.
 
 After loading, all the functions below are available at the REPL (they are imported into
 `COMMON-LISP-USER`). Note: there is no `ai` package — call `(main)`, not `(ai::main)`.

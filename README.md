@@ -59,10 +59,8 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 **`tutorial/tutorial.md`**. In brief, from a REPL started in the `src/` directory:
 
 ```lisp
-;; load the system
-(dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "attention" "processing" "persist" "ai"))
-  (load (format nil "~a.lisp" f)))
+;; load the system (run this from inside src/)
+(load "load.lisp")
 
 (train-from-file "training-set.txt")               ; learn a starter knowledge base
 (infer-p "Do horses walk on their legs?" "yes")    ; => T   (generalized category)

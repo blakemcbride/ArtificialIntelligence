@@ -308,8 +308,9 @@ continual-learning behavior can be regression-checked.
     (inherited by SBCL's `CL-USER`); it now `shadowing-import`s `reset` first (via
     `find-symbol`, since the lowercase package name can't be named with `pkg:sym` syntax).
   - The suite loads its components by pathname, so it passes on **CLISP, SBCL, CCL, and
-    ECL** (`16 run, 0 failed` on each). The bundled `(load "ai.lisp")` itself still only
-    works under CLISP — see `CLAUDE.md` › "Running the code".
+    ECL** (`16 run, 0 failed` on each). A one-call loader (`load.lisp` / `(load-system)`)
+    loads everything by pathname on any implementation; `(load "ai.lisp")` works directly
+    only under CLISP — see `CLAUDE.md` › "Running the code".
 
 ### Phase 1 — Output component (generation)  ✅ done
 - [x] `src/output.lisp` (package `output`): `build-output-structure(words)` builds (or
