@@ -27,6 +27,9 @@
 (require "concepts")
 (use-package "concepts")
 
+(require "attention")
+(use-package "attention")
+
 (require "processing")
 (use-package "processing")
 

@@ -28,6 +28,8 @@
 (use-package "output")       ; produce-output
 (require "concepts")
 (use-package "concepts")     ; note-relationship (auto-populate the concept graph)
+(require "attention")
+(use-package "attention")    ; note-copy / copy-response (the fast-weight attention head)
 
 ;;; The Processing component (Plan.md) bridges the input and output networks.  After
 ;;; an input sentence is built, build-structure returns a set of "meaning" neurons
@@ -117,17 +119,20 @@
 	(setq winner root)))))
 
 (defun respond (input)
-  "Given an input sentence (a string, e.g. \"Do cats purr?\", or a list of words),
-   build/refresh its input structure, spread activation from its meaning neurons across
-   the associations to the output roots, and return the word list of the best-scoring
-   response -- or NIL if nothing clears threshold (\"I don't know\").  Secondary values
-   are the winning root and its activation.  Building is monotonic; no weights change."
+  "Given an input sentence (a string, e.g. \"Do cats purr?\", or a list of words), return
+   the word list of the best response, or NIL (\"I don't know\").  A strongly-learned
+   attention copy cue fires first (e.g. \"say X\" -> X, even for a novel X); otherwise the
+   answer comes from spreading activation across the input->output associations.  Secondary
+   values are the winning root and its activation.  No weights change here."
   (let* ((input-words (as-words input))
-	 (endings (build-structure (intern-words input-words)))
-	 (winner  (select-winner (spread-activation endings))))
-    (if winner
-	(values (produce-output winner) winner (neuron-current-value winner))
-	(values nil nil 0.0))))
+	 (copied (copy-response input-words)))
+    (if copied
+	(values copied nil 0.0)
+	(let* ((endings (build-structure (intern-words input-words)))
+	       (winner  (select-winner (spread-activation endings))))
+	  (if winner
+	      (values (produce-output winner) winner (neuron-current-value winner))
+	      (values nil nil 0.0))))))
 
 ;;; --- Reinforcement & decay (Phase 4): the continual-learning dynamics ----------
 ;;;
@@ -218,4 +223,5 @@
     (adapt-threshold correct-root (neuron-current-value correct-root))
     (decay-associations)
     (note-relationship input-words correct-words)   ; also grow the concept graph (Phase 7)
+    (note-copy input-words correct-words)           ; also learn copy cues (attention head)
     guess))

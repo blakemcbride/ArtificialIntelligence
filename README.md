@@ -42,8 +42,10 @@ Rather than let the ideas disappear — and given the rise of ChatGPT and my adv
 — I continued the project with the help of **Claude Code**, Anthropic's command-line coding
 agent. **Claude Code wrote much of the current code**, working from my design and under my
 direction: it built out the Processing and Output components, a Hebbian *concept graph*
-that produces the generalization described above, an interactive teaching loop,
-knowledge-base persistence, an importable training set, and an automated test suite.
+that produces the category generalization described above, a transformer-like *attention
+head* — built as Hebbian fast weights — that handles copy/binding (the original goal of
+`say X → X` for a word never seen), an interactive teaching loop, knowledge-base
+persistence, an importable training set, and an automated test suite.
 
 The system is now functional end to end. You can teach it, and it learns, generalizes to
 things it was never directly taught, and remembers across sessions — all through local
@@ -59,12 +61,16 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 ```lisp
 ;; load the system
 (dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "processing" "persist" "ai"))
+             "concepts" "attention" "processing" "persist" "ai"))
   (load (format nil "~a.lisp" f)))
 
 (train-from-file "training-set.txt")               ; learn a starter knowledge base
-(infer-p "Do horses walk on their legs?" "yes")    ; => T   (generalized)
+(infer-p "Do horses walk on their legs?" "yes")    ; => T   (generalized category)
 (infer-p "Do snakes walk on their legs?" "yes")    ; => NIL (excluded)
+
+;; copy / binding -- the original goal, generalizing to a word never seen:
+(learn "say dog" "dog") (learn "say cat" "cat") (learn "say house" "house")
+(respond "say car")                                ; => ("car")
 
 (main)   ; or start an interactive teaching session
 ```

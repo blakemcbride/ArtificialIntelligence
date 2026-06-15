@@ -18,6 +18,7 @@
 (load "input.lisp")
 (load "output.lisp")
 (load "concepts.lisp")
+(load "attention.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
 (load "ai.lisp")   ; loaded last; its use-package forms bring every component's
@@ -459,6 +460,32 @@
          (null (learn "Do cats purr?" "yes")))
   (check "respond accepts a string and recalls"
          (equal '("yes") (respond "Do cats purr?")))
+
+  ;; ===================== Attention copy head (say X -> X) =====================
+  (format t "~%Attention (copy / binding) tests~%")
+  (reset)
+  (learn "say dog" "dog")
+  (learn "say cat" "cat")
+  (learn "say bird" "bird")
+  (check "copy: a taught filler is recalled (say dog)"
+         (equal '("dog") (respond "say dog")))
+  (check "copy: a NOVEL filler is copied (say horse -> horse)"
+         (equal '("horse") (respond "say horse")))
+  (check "copy: nonsense is copied too (say zorp -> zorp)"
+         (equal '("zorp") (respond "say zorp")))
+  (check "copy: an input with no learned cue is unaffected"
+         (null (respond "the moon glows")))
+  (reset)
+  (learn "echo fish" "fish")
+  (check "copy: a single example does not yet trigger copying"
+         (null (copy-response '("echo" "whale"))))
+  (check "copy cue persists across save / reload"
+         (let ((tmp "copy-temp.sexp"))
+           (reset)
+           (dolist (s '("dog" "cat" "bird")) (learn (format nil "say ~a" s) s))
+           (save-network tmp) (reset) (load-network tmp)
+           (prog1 (equal '("horse") (respond "say horse"))
+             (ignore-errors (delete-file tmp)))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

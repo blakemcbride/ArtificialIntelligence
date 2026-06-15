@@ -25,6 +25,7 @@
 	   "*ASSOCIATIONS*"
 	   "*CONCEPTS*"
 	   "*CONCEPT-GRAPH*"
+	   "*COPY-CUES*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -41,6 +42,7 @@
 (defparameter *associations* nil)   ; association dendrites (kind :association), for fast decay/pruning
 (defparameter *concepts* (make-hash-table :test 'equal)) ; "predicate:answer" string -> state neuron (Phase 7)
 (defparameter *concept-graph* (make-hash-table :test 'eq)) ; concept neuron -> (neighbor neuron -> weight): the Hebbian concept graph
+(defparameter *copy-cues* (make-hash-table :test 'equal)) ; cue word -> strength: learned "copy the next word" triggers (attention head)
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -49,7 +51,8 @@
   (setq *responses* (make-hash-table :test 'equal))
   (setq *associations* nil)
   (setq *concepts* (make-hash-table :test 'equal))
-  (setq *concept-graph* (make-hash-table :test 'eq)))
+  (setq *concept-graph* (make-hash-table :test 'eq))
+  (setq *copy-cues* (make-hash-table :test 'equal)))
 
 (defstruct neuron
   "An unnamed neuron"

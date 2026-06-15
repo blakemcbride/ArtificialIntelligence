@@ -250,6 +250,36 @@ contrastive (negative-evidence) weighting remain open, as does folding concept-g
 generalization into the interactive `respond` loop. This matches Blake's expectation that
 "these shortcomings and the answers to them would evolve with the use of the system."
 
+### 3.6 Attention / binding — the copy capability (Hebbian fast weights)
+
+The concept graph generalizes *categories* but cannot **copy a specific filler**. The
+original FIRST GOAL (`notes/Overview.txt`) — `say X → X` for an unseen X — needs *binding*,
+and that is exactly what attention provides.
+
+Key fact: **attention is a Hebbian associative memory.** Linear attention,
+`out = q · (Σ kᵢ⊗vᵢ)`, is a query against an outer-product ("fast weight") matrix — pure
+Hebbian, no backprop. (Softmax attention ≈ a modern Hopfield network; same family.)
+
+`attention.lisp` builds this: each token and each position gets a deterministic unit
+vector; a sentence is bound as `M = Σ roleᵢ ⊗ tokenᵢ`; retrieving the token at a role `r` is
+`r · M`, decoded to the nearest token — attention with keys = roles, values = token vectors.
+What is *learned* (slow, Hebbian, in `*copy-cues*`): that a cue word triggers "copy the next
+word" — strengthened whenever a one-word output equals the word right after an input word.
+Once a cue clears `*copy-threshold*`, `respond` fires `copy-response` (an induction head)
+before falling back to associative spreading.
+
+**It works** — taught only `say dog→dog`, `say cat→cat`, `say house→house`, the system
+answers `say car → car` (car never seen), plus `say elephant`, `say xylophone`, even
+nonsense `say grobnar`. The filler is routed *by reference*, so it generalizes to any word
+— which a lookup, the associative net, and the concept graph all cannot. It copies by
+reference, not by rote repetition, so it is not the trivial relay rejected earlier; and it
+complements the concept graph (binding vs. categories). Threshold-gated so it never hijacks
+ordinary responses. Standalone proof-of-concept in `src/attention-experiment.lisp`.
+
+Open: multi-word copies and other roles/offsets; learning the cue more distributionally;
+and giving the input network distributed (vector) token codes throughout, not only in the
+attention head.
+
 ---
 
 ## Part 4 — The build plan (phased, each phase independently testable)
@@ -399,6 +429,17 @@ continual-learning behavior can be regression-checked.
 - **Still open:** contrastive (negative-evidence) weighting for sharper near-miss
   discrimination on noisy corpora; folding concept-graph generalization into the
   interactive `respond` loop (today it is queried via `infer-p` / `infer-strength`).
+
+### Phase 7b — Attention / binding head: the copy capability  ✅ done
+- [x] `src/attention.lisp` (package `attention`): a transformer-like attention head built
+      as **Hebbian fast weights** (outer-product binding + role-query retrieval; no
+      backprop). `learn` learns copy cues (`note-copy` → `*copy-cues*`, persisted); once a
+      cue clears `*copy-threshold*`, `respond` fires `copy-response` (an induction head)
+      before associative spreading. Words/positions get deterministic vector codes.
+- **Done when:** ✓ the original FIRST GOAL — taught only `say dog/cat/house`, the system
+      answers `say car → car` (car never seen), generalizing to any filler by routing it
+      *by reference*. 6 new tests; suite now **115**, green on SBCL. PoC:
+      `attention-experiment.lisp`.  See §3.6.
 
 ### Phase 8 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network

@@ -28,7 +28,7 @@ From a shell, in the `src/` directory, start SBCL and paste these:
 ```lisp
 ;; 1. load the system (run this from inside src/)
 (dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "processing" "persist" "ai"))
+             "concepts" "attention" "processing" "persist" "ai"))
   (load (format nil "~a.lisp" f)))
 
 ;; 2. import the starter knowledge base (105 facts)
@@ -51,7 +51,7 @@ each piece.
 
 ## 1. Loading the system
 
-The code is eight source files in `src/`, each its own package, plus `ai.lisp` (the
+The code is nine source files in `src/`, each its own package, plus `ai.lisp` (the
 top-level). They must load in dependency order. **Start your Lisp from inside `src/`** so
 that relative paths (the training file, the saved knowledge base) resolve there.
 
@@ -59,7 +59,7 @@ that relative paths (the training file, the saved knowledge base) resolve there.
 
 ```lisp
 (dolist (f '("data-structures" "line-input" "input" "output"
-             "concepts" "processing" "persist" "ai"))
+             "concepts" "attention" "processing" "persist" "ai"))
   (load (format nil "~a.lisp" f)))
 ```
 
@@ -192,6 +192,29 @@ second value, which word it treated as the subject:
 (infer-strength "Do horses walk on their legs?" "yes")
 ;; => 0.025...   and second value "horses"
 ```
+
+### Copy / binding — `say X → X`
+
+A different kind of generalization: **copying a specific word**. Teach the system a few
+examples of a cue followed by a word to echo, and it learns to copy *any* word after that
+cue — even one it has never seen. This is the project's original goal, handled by a
+**Hebbian "attention" head** (the same idea as a transformer's attention, but built from
+Hebbian fast weights — no backprop):
+
+```lisp
+(reset)
+(learn "say dog" "dog")
+(learn "say cat" "cat")
+(learn "say house" "house")
+
+(respond "say car")        ; => ("car")       <- "car" was NEVER seen before
+(respond "say elephant")   ; => ("elephant")
+(respond "say grobnar")    ; => ("grobnar")   <- pure nonsense, still copied
+```
+
+It copies the filler *by reference*, so it works for any word — something neither plain
+recall nor the category generalization can do. It only kicks in once a cue has been
+confirmed on a few examples (`*copy-threshold*`), so it never hijacks ordinary answers.
 
 You don't tell it which word is the "subject" — it tries every word as the subject and
 keeps the strongest reading. That is what "slot-free" means here.

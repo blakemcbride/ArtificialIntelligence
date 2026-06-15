@@ -61,6 +61,12 @@
 	     *concept-graph*)
     acc))
 
+(defun copy-cues->alist ()
+  "Flatten *copy-cues* (cue word -> strength) to an alist."
+  (let (acc)
+    (maphash (lambda (cue w) (push (cons cue w) acc)) *copy-cues*)
+    acc))
+
 (defun hash->id-alist (table)
   "Alist of (key . neuron-id) for a string -> neuron hash table."
   (let (acc)
@@ -78,7 +84,8 @@
 		   :output-roots (mapcar #'neuron-id *output-roots*)
 		   :responses (hash->id-alist *responses*)
 		   :concept-states (hash->id-alist *concepts*)
-		   :concept-edges (concept-edges->list))
+		   :concept-edges (concept-edges->list)
+		   :copy-cues (copy-cues->alist))
 	     s)
       (terpri s)))
   path)
@@ -127,6 +134,8 @@
 	    (let ((tab (or (gethash a *concept-graph*)
 			   (setf (gethash a *concept-graph*) (make-hash-table :test 'eq)))))
 	      (setf (gethash b tab) w))))))
+    (dolist (pair (getf data :copy-cues))
+      (setf (gethash (car pair) *copy-cues*) (cdr pair)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
