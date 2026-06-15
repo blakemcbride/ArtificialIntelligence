@@ -4,6 +4,6 @@
 *.fasl
 *.lx64fsl
 
-# saved/exported knowledge bases and runtime memory files (e.g. ai-network.sexp)
-*.sexp
+# saved/exported knowledge bases and runtime memory files (e.g. ai-network.kb)
+*.kb
 

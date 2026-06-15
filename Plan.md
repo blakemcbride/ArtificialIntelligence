@@ -335,9 +335,20 @@ similarity and graceful generalization (used now for follow-up resolution and a 
 operation), but they do *not* give crisp counts — category labels don't sit near their
 members, and there is no clean membership boundary (similarity decays continuously).  So the
 discrete concept graph stays the home of crisp set-operations while the vectors provide
-non-brittle similarity: **the two are complementary**, which is the real finding.  Open:
-binding answer-polarity into the codes (plain co-occurrence ignores yes/no, so legless
-animals drift toward birds); a hybrid non-brittle membership; richer learned embeddings.
+non-brittle similarity: **the two are complementary**, which is the real finding.
+
+*Pushed further.*  Non-brittle membership **recognition** now works (`recognized-member-p`,
+k-NN over the vectors with naive number-normalisation): a novel word taught a few traits is
+recognized as a member by resemblance — *zebus*, never told "are zebus animals," is
+recognized as an animal and rejected as a vehicle — while framed members stay crisp.  What
+did **not** pan out (tried and reverted, an honest record): binding answer-polarity into the
+codes, and idf² weighting, both failed to fix the one blemish — legless animals (shark,
+snake) drift toward birds — and some hurt other pairs.  That drift is **data sparsity** (few
+fish facts, a dense bird cluster acting as an attractor), not a representation bug; the cure
+is more/cleaner data, not a weighting trick.  A non-brittle *count* also stays out of reach
+(no clean boundary in the space → it over-counts), so **counting stays on the crisp concept
+graph** while the vectors do similarity and recognition.  Open: richer learned embeddings;
+consistent number (singular/plural) in the knowledge base.
 
 ---
 
@@ -454,7 +465,7 @@ continual-learning behavior can be regression-checked.
       entry and saves on exit.
 - **Done when:** ✓ learn in one process, restart, and the learned responses are still
       produced. Demo: session 1 teaches "say hi"→"hi there" and quits (writes
-      `demo-mem.sexp`); a separate session-2 process loads it and answers "hi there".
+      `demo-mem.kb`); a separate session-2 process loads it and answers "hi there".
       6 new assertions (save→reset→reload round-trip); suite now 69, green on CLISP/SBCL/CCL/ECL.
 
 ### Phase 7 — Generalization via a Hebbian concept graph (the "say" goal)  ✅ done
@@ -482,7 +493,7 @@ continual-learning behavior can be regression-checked.
       covers several categories. After import, **horses/birds generalize** "walk on their
       legs" (never taught) while **snakes/fish/worms/cars/tables/rocks are excluded** —
       including "even snakes". `export-kb`/`import-kb` round-trip the whole KB. Suite 104.
-- [x] **Broad starter KB + startup:** `src/knowledge-base.txt` (~1,770 facts — greetings,
+- [x] **Broad starter KB + startup:** `src/knowledge-base.txt` (~2,100 facts — greetings, world geography, history,
       animals/traits, colors, opposites, categories, numbers, copy and composition
       examples) exercises every capability; `main` auto-learns it (`*starter-kb*`) on a
       first start with no saved memory, so a fresh system answers, copies, and composes out
@@ -527,9 +538,15 @@ continual-learning behavior can be regression-checked.
       drive follow-up resolution and the `similar` operation.  Empirically great for
       similarity / graceful generalization, not for crisp counting — complementary to the
       concept graph (see §3.8).
+- [x] **Non-brittle membership recognition** (`recognized-member-p`): framed (crisp) or, for
+      a word never explicitly told, k-NN resemblance in the vector space — a novel word
+      taught a few traits is recognized as a member, non-members rejected.  (Polarity-binding
+      and idf² were tried for the legless-animal drift and reverted — that drift is data
+      sparsity, not a bug; see §3.8.)
 - **Done when:** ✓ "how many <category> do you know" generic; dog↔cat / red↔blue clusters
-      emerge from co-occurrence; follow-ups resolve by vector similarity.  9 new tests;
-      suite now **138**, green on SBCL.  See §3.8 / `Future.md`.
+      emerge; follow-ups resolve by vector similarity; a novel "zebus" is recognized as an
+      animal without ever being told.  13 new tests; suite now **142**, green on SBCL.
+      See §3.8 / `Future.md`.
 
 ### Phase 8 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network

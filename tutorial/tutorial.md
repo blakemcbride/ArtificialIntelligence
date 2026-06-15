@@ -86,7 +86,7 @@ teach> yes.
   (reinforced)
 
 input> quit.
-(memory saved to ai-network.sexp)
+(memory saved to ai-network.kb)
 ```
 
 Things to know:
@@ -97,7 +97,7 @@ Things to know:
   it **learns**. The second time you say `hello.` it **recalls** "hi there"; typing a
   confirmation word (`yes`, `ok`, …) **reinforces** that pathway instead of retyping the
   answer.
-- On `quit.` it **saves everything** to `ai-network.sexp` in the current directory and
+- On `quit.` it **saves everything** to `ai-network.kb` in the current directory and
   prints its internal neuron tree. Next time you run `(main)` it **loads that file back**,
   so the system remembers across sessions.
 
@@ -117,8 +117,8 @@ input phrase => answer
 Blank lines and lines starting with `#` or `;` are ignored, so you can comment and group.
 Two sets ship with the system: `src/training-set.txt` (about 105 facts — the focused
 generalization demo) and `src/knowledge-base.txt` (a broad **starter knowledge base**,
-~1,770 facts spanning greetings, a large animal-trait matrix, composition, categories,
-colors, opposites, arithmetic, geography, space, and simple science). Import either with
+~2,100 facts spanning greetings, a large animal-trait matrix, composition, categories,
+colors, opposites, arithmetic, world geography, history, space, and simple science). Import either with
 `train-from-file`:
 
 ```lisp
@@ -378,12 +378,12 @@ The whole knowledge base — input network, responses, associations, **and** the
 graph — round-trips through a single file.
 
 ```lisp
-(export-kb "my-kb.sexp")    ; write everything to my-kb.sexp
+(export-kb "my-kb.kb")    ; write everything to my-kb.kb
 (reset)                     ; wipe memory
-(import-kb "my-kb.sexp")    ; load it back; => T  (NIL if the file is missing)
+(import-kb "my-kb.kb")    ; load it back; => T  (NIL if the file is missing)
 ```
 
-`(main)` does this automatically for the default file `ai-network.sexp` (loads on entry,
+`(main)` does this automatically for the default file `ai-network.kb` (loads on entry,
 saves on exit), so an interactive session persists on its own. Use `export-kb`/`import-kb`
 when you want to manage named knowledge bases yourself. The file is a human-readable
 s-expression — you can peek at it.
@@ -403,7 +403,7 @@ s-expression — you can peek at it.
 | Find similar concepts (distributed vectors) | `(nearest "dog")` / `(similarity "dog" "cat")` |
 | Ask if an input generalizes to an answer | `(infer-p "Do horses walk on their legs?" "yes")` |
 | Get the generalization strength (+ subject) | `(infer-strength "Do horses walk on their legs?" "yes")` |
-| Save / load a knowledge base | `(export-kb "f.sexp")` / `(import-kb "f.sexp")` |
+| Save / load a knowledge base | `(export-kb "f.kb")` / `(import-kb "f.kb")` |
 | Wipe all memory | `(reset)` |
 | Print the internal neuron tree | `(dump-dictionary)` |
 
@@ -418,7 +418,7 @@ equivalent.
 
 These are special variables you can `setf`/`let`-bind to change behavior (defaults shown):
 
-- `*save-file*` (`"ai-network.sexp"`) — the file `(main)` auto-loads/saves.
+- `*save-file*` (`"ai-network.kb"`) — the file `(main)` auto-loads/saves.
 - `*concept-fraction*` (`0.15`) — how close to the taught members a new word must be to
   count as a category member. Raise it to be stricter (fewer things generalize in), lower
   it to be looser.

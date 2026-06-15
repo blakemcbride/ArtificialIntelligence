@@ -47,13 +47,15 @@
 ;;; --- online learning: accumulate co-occurrence counts -------------------------------
 ;; *vcache* and *vec-mean* live in data-structures so `reset' and load-network clear them.
 
-(defun note-cooccurrence (words)
-  "Continual, local update: every (distinct) word in this fact records that it co-occurred
-   with the others.  Cheap -- just counter bumps."
-  (let ((ws (remove-duplicates words :test #'string=)))
+(defun note-cooccurrence (input-words output-words)
+  "Continual, local update: each word in this fact (input + answer) records that it
+   co-occurred with the others.  Cheap -- just counter bumps."
+  (let ((ws (remove-duplicates (append input-words output-words) :test #'string=)))
     (dolist (w ws)
       (let ((tab (or (gethash w *cooccur*) (setf (gethash w *cooccur*) (make-hash-table :test 'equal)))))
-	(dolist (o ws) (unless (string= o w) (incf (gethash o tab 0)))))))
+	(dolist (o ws)
+	  (unless (string= o w)
+	    (incf (gethash o tab 0)))))))
   (clrhash *vcache*) (setf *vec-mean* nil))                 ; invalidate derived vectors
 
 ;;; --- derived vectors ----------------------------------------------------------------

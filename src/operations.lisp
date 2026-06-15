@@ -5,6 +5,7 @@
 	   "RUN-OPERATION"
 	   "OPERATION-ANSWER-P"
 	   "CATEGORY-MEMBERS"
+	   "RECOGNIZED-MEMBER-P"
 	   "*OP-KEYWORDS*"))
 
 (in-package "operations")
@@ -44,13 +45,15 @@
 ;;; from what the system actually knows, and grows as it is taught more.
 (defun category-variants (c)
   "C with its naive singular/plural forms, so we match a category however it was phrased
-   (\"animals\" vs \"animal\", \"color\" vs \"colors\")."
-  (remove-duplicates
-   (list c
-	 (if (and (> (length c) 2) (char= (char c (1- (length c))) #\s))
-	     (subseq c 0 (1- (length c))) c)
-	 (concatenate 'string c "s"))
-   :test #'string=))
+   (\"animals\" vs \"animal\", \"color\" vs \"colors\", \"countries\" vs \"country\")."
+  (let ((n (length c)) (v (list c (concatenate 'string c "s"))))
+    (when (and (> n 1) (char= (char c (1- n)) #\s))
+      (push (subseq c 0 (1- n)) v))                                  ; cats -> cat
+    (when (and (> n 3) (string= "ies" (subseq c (- n 3))))
+      (push (concatenate 'string (subseq c 0 (- n 3)) "y") v))       ; countries -> country
+    (when (and (> n 1) (char= (char c (1- n)) #\y))
+      (push (concatenate 'string (subseq c 0 (1- n)) "ies") v))      ; country -> countries
+    (remove-duplicates v :test #'string=)))
 
 (defun key-parts (key)
   "Split a concept state KEY \"predicate:answer\" into (values predicate answer)."
@@ -86,6 +89,24 @@
 		     (when (> n best-n) (setf best-n n best state))))))
 	     *concepts*)
     (and best (state-members best))))
+
+(defun stem (w)
+  "Naive number-normalisation (strip a trailing s) so 'tiger' matches framed 'tigers'."
+  (if (and (> (length w) 3) (char= (char w (1- (length w))) #\s)) (subseq w 0 (1- (length w))) w))
+
+(defun recognized-member-p (word category)
+  "Is WORD a member of CATEGORY -- framed (crisp), or, if it was never explicitly told,
+   recognized **non-brittlely** by resemblance: a majority of its nearest concepts (in the
+   distributed vector space) are framed members of the category.  k-NN, so it degrades
+   gracefully and needs no global threshold the way counting would.  (Comparison is
+   number-normalised so singular/plural forms match.)"
+  (let ((members (mapcar #'stem (category-members category)))
+	(ws (stem word)))
+    (and members
+	 (or (member ws members :test #'string=)
+	     (let* ((nbrs (mapcar (lambda (p) (stem (car p))) (nearest word 8)))
+		    (hits (count-if (lambda (n) (member n members :test #'string=)) nbrs)))
+	       (>= hits 4))))))
 
 (defun execute-op (op c)
   "Run primitive OP over argument C, returning a value (number, list, or NIL)."

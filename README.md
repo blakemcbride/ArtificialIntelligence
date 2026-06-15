@@ -55,7 +55,7 @@ training set, and an automated test suite.
 The system is now functional end to end. You can teach it, and it learns, generalizes to
 things it was never directly taught, and remembers across sessions — all through local
 Hebbian learning, with no backpropagation and no separate training phase. It also ships
-with a broad **starter knowledge base** (`src/knowledge-base.txt`, ~1,850 facts) that `main`
+with a broad **starter knowledge base** (`src/knowledge-base.txt`, ~2,100 facts — including world geography and history) that `main`
 learns automatically the first time it runs, so a fresh system already answers questions,
 copies, and composes out of the box.
 

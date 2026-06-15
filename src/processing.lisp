@@ -241,5 +241,5 @@
     (note-relationship input-words correct-words)   ; also grow the concept graph (Phase 7)
     (note-copy input-words correct-words)           ; also learn copy cues (attention head)
     (note-template input-words correct-words)       ; also learn response templates (composition)
-    (note-cooccurrence (append input-words correct-words)) ; also grow the distributed concept vectors
+    (note-cooccurrence input-words correct-words)    ; also grow the distributed concept vectors (polarity-bound)
     guess))

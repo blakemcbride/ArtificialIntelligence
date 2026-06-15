@@ -278,7 +278,7 @@
   ;; Drive `main' over a scripted session: teach "say hi" -> "hi there" on turn 1,
   ;; then re-present "say hi" on turn 2 and confirm.  main loads/saves *save-file*, so
   ;; bind it to a throwaway path (and remove it) to keep the test self-contained.
-  (let ((*save-file* "phase5-temp.sexp") (*starter-kb* nil))  ; no auto-train: keep isolated
+  (let ((*save-file* "phase5-temp.kb") (*starter-kb* nil))  ; no auto-train: keep isolated
     (ignore-errors (delete-file *save-file*))
     (let* ((script (format nil "say hi.~%hi there.~%say hi.~%yes.~%quit.~%"))
            (out (with-output-to-string (*standard-output*)
@@ -297,7 +297,7 @@
   (reset)
   (learn '("say" "hi") '("hi" "there"))
   (learn '("the" "dog" "barks") '("woof"))
-  (let ((tmp "phase6-temp.sexp")
+  (let ((tmp "phase6-temp.kb")
         (hi-before  (respond '("say" "hi")))
         (dog-before (respond '("the" "dog" "barks"))))
     (save-network tmp)
@@ -315,7 +315,7 @@
                 (plusp (hash-table-count *responses*))
                 (plusp (length *associations*))))
     (check "loading a missing file returns NIL"
-           (null (load-network "no-such-file-zzz.sexp")))
+           (null (load-network "no-such-file-zzz.kb")))
     (ignore-errors (delete-file tmp)))
 
   ;; ===================== Phase 7 -- Concept graph (generalization) =============
@@ -380,7 +380,7 @@
   (dolist (s '("dogs" "goats" "cats" "horses"))          (learn (list "do" s "have" "legs") '("yes")))
   (dolist (s '("dogs" "goats" "cats" "horses" "snakes")) (learn (list "are" s "animals") '("yes")))
   (learn '("do" "snakes" "have" "legs") '("no"))
-  (let ((tmp "phase7-temp.sexp")
+  (let ((tmp "phase7-temp.kb")
         (before (infer-strength '("do" "horses" "walk" "on" "their" "legs") '("yes"))))
     (save-network tmp)
     (reset)
@@ -436,7 +436,7 @@
     (check "imported KB excludes inert objects: rocks"
            (not (infer-p '("do" "rocks" "walk" "on" "their" "legs") '("yes")))))
   ;; export / import the whole KB (input net, outputs, associations, concept graph)
-  (let ((tmp "kb-temp.sexp"))
+  (let ((tmp "kb-temp.kb"))
     (export-kb tmp)
     (reset)
     (check "after reset the KB is empty" (zerop (hash-table-count *dictionary*)))
@@ -482,7 +482,7 @@
   (check "copy: a single example does not yet trigger copying"
          (null (copy-response '("echo" "whale"))))
   (check "copy cue persists across save / reload"
-         (let ((tmp "copy-temp.sexp"))
+         (let ((tmp "copy-temp.kb"))
            (reset)
            (dolist (s '("dog" "cat" "bird")) (learn (format nil "say ~a" s) s))
            (save-network tmp) (reset) (load-network tmp)
@@ -518,7 +518,7 @@
          (progn (reset) (learn "what is a dog" "a dog is an animal")
                 (null (compose '("what" "is" "a" "horse")))))
   (check "templates persist across save / reload"
-         (let ((tmp "tmpl-temp.sexp"))
+         (let ((tmp "tmpl-temp.kb"))
            (reset)
            (learn "what is a dog" "a dog is an animal")
            (learn "what is a cat" "a cat is an animal")
@@ -555,7 +555,7 @@
            (progn (learn "are dragons animals" "yes")
                   (> (parse-integer (first (ask "how many animals do you know?"))) animals)))
     (check "operation mapping persists across save / reload"
-           (let ((tmp "op-temp.sexp"))
+           (let ((tmp "op-temp.kb"))
              (save-network tmp) (reset) (load-network tmp)
              (prog1 (and (run-operation '("how" "many" "animals" "do" "you" "know")) t)
                (ignore-errors (delete-file tmp))))))
@@ -574,10 +574,25 @@
   (check "operation: 'what is similar to X' returns related words"
          (let ((r (ask "what is similar to horse"))) (and r (> (length r) 1))))
   (check "vectors persist across save / reload"
-         (let ((tmp "vec-temp.sexp") (before (similarity "dog" "cat")))
+         (let ((tmp "vec-temp.kb") (before (similarity "dog" "cat")))
            (save-network tmp) (reset) (load-network tmp)
            (prog1 (> (similarity "dog" "cat") (* 0.9 before))
              (ignore-errors (delete-file tmp)))))
+  ;; non-brittle membership recognition (k-NN over the vector space)
+  (reset)
+  (train-from-file "knowledge-base.txt" :verbose nil)
+  (check "membership: a framed member is recognized (tiger -> animals)"
+         (recognized-member-p "tiger" "animals"))
+  (check "membership: a non-member is rejected (car -> animals)"
+         (not (recognized-member-p "car" "animals")))
+  ;; a novel word with several animal traits, but NEVER told "are zebus animals":
+  (dolist (f '("do zebus have fur" "do zebus have legs" "can zebus run"
+               "do zebus eat grass" "do zebus have a tail"))
+    (learn f "yes"))
+  (check "membership is non-brittle: a novel word is recognized by resemblance"
+         (recognized-member-p "zebus" "animals"))
+  (check "membership stays discriminating (the novel word is not a vehicle)"
+         (not (recognized-member-p "zebus" "vehicles")))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
