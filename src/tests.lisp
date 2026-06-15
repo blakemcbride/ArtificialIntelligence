@@ -276,7 +276,7 @@
   ;; Drive `main' over a scripted session: teach "say hi" -> "hi there" on turn 1,
   ;; then re-present "say hi" on turn 2 and confirm.  main loads/saves *save-file*, so
   ;; bind it to a throwaway path (and remove it) to keep the test self-contained.
-  (let ((*save-file* "phase5-temp.sexp"))
+  (let ((*save-file* "phase5-temp.sexp") (*starter-kb* nil))  ; no auto-train: keep isolated
     (ignore-errors (delete-file *save-file*))
     (let* ((script (format nil "say hi.~%hi there.~%say hi.~%yes.~%quit.~%"))
            (out (with-output-to-string (*standard-output*)
@@ -523,6 +523,20 @@
            (save-network tmp) (reset) (load-network tmp)
            (prog1 (equal '("a" "horse" "is" "an" "animal") (respond "what is a horse"))
              (ignore-errors (delete-file tmp)))))
+
+  ;; ===================== Starter knowledge base =====================
+  (format t "~%Starter knowledge-base tests~%")
+  (reset)
+  (let ((n (train-from-file "knowledge-base.txt" :verbose nil)))
+    (check "knowledge-base.txt loads a large starter set (> 300 facts)" (> n 300))
+    (check "starter KB: concept-graph recall (what color is the sky -> blue)"
+           (equal '("blue") (ask "what color is the sky?")))
+    (check "starter KB: copy head fires (say platypus -> platypus, never taught)"
+           (equal '("platypus") (respond "say platypus")))
+    (check "starter KB: composes for an unseen animal (what is a hippo)"
+           (equal '("a" "hippo" "is" "an" "animal") (respond "what is a hippo")))
+    (check "starter KB: a trait question generalizes (are tigers animals -> yes)"
+           (equal '("yes") (ask "are tigers animals?"))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

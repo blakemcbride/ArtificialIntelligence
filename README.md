@@ -51,7 +51,10 @@ set, and an automated test suite.
 
 The system is now functional end to end. You can teach it, and it learns, generalizes to
 things it was never directly taught, and remembers across sessions — all through local
-Hebbian learning, with no backpropagation and no separate training phase.
+Hebbian learning, with no backpropagation and no separate training phase. It also ships
+with a broad **starter knowledge base** (`src/knowledge-base.txt`, ~374 facts) that `main`
+learns automatically the first time it runs, so a fresh system already answers questions,
+copies, and composes out of the box.
 
 The design and rationale are documented in `Plan.md`; a map of the code is in `CLAUDE.md`.
 
@@ -80,15 +83,16 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 (learn "what is a dog" "a dog is an animal") (learn "what is a cat" "a cat is an animal")
 (respond "what is a horse")                        ; => ("a" "horse" "is" "an" "animal")
 
-(main)   ; or start an interactive teaching session
+(main)   ; interactive session; on a fresh start it auto-learns knowledge-base.txt first
 ```
 
 Run the test suite from `src/` with `make test`.
 
 ## Repository structure
 
-* `src/` — the Common Lisp implementation (the live system), plus `training-set.txt`, a
-  starter knowledge base.
+* `src/` — the Common Lisp implementation (the live system), plus `knowledge-base.txt` (the
+  broad starter KB auto-learned on first run) and `training-set.txt` (the focused
+  generalization demo used by the tests).
 * `tutorial/` — a hands-on tutorial.
 * `notes/` — my original, unfiltered notes and an overview of the intended design.
 * `C++/` — the original, incomplete C++ attempt (abandoned; kept for history).

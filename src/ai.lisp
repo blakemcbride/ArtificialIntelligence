@@ -39,6 +39,11 @@
 (defparameter *confirm-words* '("yes" "y" "right" "correct" "ok")
   "Single-word teacher lines that confirm a correct guess instead of giving a new answer.")
 
+(defparameter *starter-kb* "knowledge-base.txt"
+  "Training file `main' learns on first startup when there is no saved memory yet, so a
+   fresh system already knows something.  Bind to NIL to start completely blank.")
+(declaim (ftype function train-from-file))   ; defined below; main calls it on first startup
+
 (defun words-of (neurons)
   "The word strings of a create-line result, in order."
   (mapcar #'named-neuron-name neurons))
@@ -107,11 +112,18 @@
      3. read the teacher's line -- the correct response, or a confirm token
         (one of *confirm-words*) to accept a correct guess,
      4. learn from it (reinforce a correct guess / teach or correct otherwise).
-   Stop with `quit.' / `exit.' (or end-of-input).  Loads saved memory on entry (if any),
-   saves it on exit, and prints the input neuron tree."
-  (if (load-network)
-      (format t "~&(loaded saved memory from ~a)~%" *save-file*)
-      (reset))
+   Stop with `quit.' / `exit.' (or end-of-input).  On entry it loads saved memory if any,
+   else learns *starter-kb* (so a fresh system already knows things); it saves on exit and
+   prints the input neuron tree."
+  (cond ((load-network)
+         (format t "~&(loaded saved memory from ~a)~%" *save-file*))
+        ((and *starter-kb* (probe-file *starter-kb*))
+         (reset)
+         (format t "~&(no saved memory -- learning the starter knowledge base ~a ...)~%"
+                 *starter-kb*)
+         (let ((n (train-from-file *starter-kb* :verbose nil)))
+           (format t "~&(learned ~d facts; teach me more, or just ask)~%" n)))
+        (t (reset)))
   (format t "~&Teaching loop -- type a sentence, then on the next line the correct~%")
   (format t "response (or ~{~a~^/~} to confirm a correct guess).  Stop with quit.~%~%"
 	  *confirm-words*)
@@ -122,7 +134,7 @@
        (when (or (null in) (quit-line-p in))
 	 (return))
        (let* ((resolved (resolve-followup in))   ; conversation memory: fold in the previous turn
-	      (guess (respond resolved)))
+	      (guess (or (infer-answer resolved) (respond resolved))))
 	 (remember-turn resolved)
 	 (format t "  guess: ~a~%"
 		 (if guess (format nil "~{~a~^ ~}" guess) "(I don't know)"))

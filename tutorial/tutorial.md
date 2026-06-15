@@ -115,14 +115,20 @@ input phrase => answer
 ```
 
 Blank lines and lines starting with `#` or `;` are ignored, so you can comment and group.
-A starter set ships in `src/training-set.txt` (about 105 facts across animals, vehicles,
-furniture, and objects). Import it with:
+Two sets ship with the system: `src/training-set.txt` (about 105 facts — the focused
+generalization demo) and `src/knowledge-base.txt` (a broad **starter knowledge base**, ~374
+facts across greetings, animals and their traits, colors, opposites, categories, numbers,
+plus copy and composition examples). Import either with `train-from-file`:
 
 ```lisp
-(train-from-file "training-set.txt")
-;; trained on 105 relationships from training-set.txt
-;; => 105
+(train-from-file "knowledge-base.txt")
+;; => 374
 ```
+
+**You usually don't need to do this by hand:** the first time you run `(main)` with no saved
+memory, it learns `knowledge-base.txt` automatically, so a fresh system already answers
+questions, copies, and composes. (Bind `*starter-kb*` to `nil` before `(main)` to start
+completely blank.)
 
 Each line is learned exactly as a teaching-loop turn would be. To author your own set, just
 make a file like:

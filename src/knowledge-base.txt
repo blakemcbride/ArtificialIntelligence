@@ -1,0 +1,454 @@
+# ============================================================================
+# knowledge-base.txt -- a broad starter knowledge base.
+#
+# Format: one fact per line,  input phrase => answer phrase.
+# Blank lines and lines starting with # or ; are ignored.
+#
+# `main' learns this automatically the first time it starts with no saved memory
+# (see *starter-kb*), so the system knows things out of the box.  You can also load
+# it by hand:  (train-from-file "knowledge-base.txt").
+#
+# It is built to exercise every capability:
+#   * direct question -> answer recall            (respond / ask)
+#   * category generalization to new subjects     (infer-p / infer-answer / ask)
+#   * copy / binding, "say X" -> X                 (the attention head)
+#   * template composition, "what is a X" -> ...   (compose)
+#   * conversational follow-ups                    (ask: "and cats?")
+# All facts are simple and timeless; nothing here is meant to be controversial.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Greetings and small talk  (direct recall)
+# ---------------------------------------------------------------------------
+hello => hi
+hi => hello
+hey => hello
+good morning => good morning
+good afternoon => good afternoon
+good evening => good evening
+good night => good night
+how are you => i am fine
+how are you today => i am fine
+thank you => you are welcome
+thanks => you are welcome
+please => of course
+goodbye => goodbye
+bye => goodbye
+see you later => goodbye
+nice to meet you => nice to meet you too
+yes => okay
+no => okay
+
+# ---------------------------------------------------------------------------
+# Who the system is
+# ---------------------------------------------------------------------------
+what is your name => i am a learning program
+who are you => i am a learning program
+what are you => i am a learning program
+what can you do => i can learn and answer
+are you a computer => yes
+are you alive => no
+
+# ---------------------------------------------------------------------------
+# Copy / binding -- "say X" -> X and "repeat X" -> X.
+# Many examples so the cue passes threshold; then it copies ANY word, even
+# one never seen (say platypus -> platypus).
+# ---------------------------------------------------------------------------
+say hello => hello
+say dog => dog
+say cat => cat
+say red => red
+say tree => tree
+say water => water
+say book => book
+say music => music
+say apple => apple
+say house => house
+say green => green
+say friend => friend
+repeat dog => dog
+repeat sun => sun
+repeat blue => blue
+repeat car => car
+repeat fish => fish
+repeat star => star
+repeat hand => hand
+repeat door => door
+
+# ---------------------------------------------------------------------------
+# Template composition -- "what is a X" -> "a X is a KIND".
+# Two or more per KIND so the template strengthens, then it composes the
+# answer for any new X (what is a hippo -> a hippo is an animal).
+# ---------------------------------------------------------------------------
+what is a dog => a dog is an animal
+what is a cat => a cat is an animal
+what is a horse => a horse is an animal
+what is a cow => a cow is an animal
+what is a lion => a lion is an animal
+what is a bird => a bird is an animal
+what is a fish => a fish is an animal
+what is a frog => a frog is an animal
+what is a rose => a rose is a flower
+what is a tulip => a tulip is a flower
+what is a daisy => a daisy is a flower
+what is a lily => a lily is a flower
+what is a banana => a banana is a fruit
+what is a lemon => a lemon is a fruit
+what is a peach => a peach is a fruit
+what is a mango => a mango is a fruit
+what is a cherry => a cherry is a fruit
+what is a carrot => a carrot is a vegetable
+what is a potato => a potato is a vegetable
+what is a bean => a bean is a vegetable
+what is a car => a car is a vehicle
+what is a truck => a truck is a vehicle
+what is a bus => a bus is a vehicle
+what is a train => a train is a vehicle
+what is a hammer => a hammer is a tool
+what is a saw => a saw is a tool
+what is a wrench => a wrench is a tool
+what is a guitar => a guitar is an instrument
+what is a piano => a piano is an instrument
+what is a drum => a drum is an instrument
+what is a chair => a chair is furniture
+what is a table => a table is furniture
+what is a bed => a bed is furniture
+
+# ---------------------------------------------------------------------------
+# Animal traits -- the generalization engine.  Many subjects share the same
+# frames ("do _ have legs", "can _ fly", ...), so categories form and a new
+# animal generalizes in (or is excluded) by the traits it shares.
+# ---------------------------------------------------------------------------
+
+# -- mammals: have legs, have fur, can't fly, don't lay eggs --
+do dogs have legs => yes
+do dogs have fur => yes
+can dogs fly => no
+are dogs mammals => yes
+are dogs animals => yes
+do dogs lay eggs => no
+do cats have legs => yes
+do cats have fur => yes
+can cats fly => no
+are cats mammals => yes
+are cats animals => yes
+do cats lay eggs => no
+do horses have legs => yes
+do horses have fur => yes
+can horses fly => no
+are horses mammals => yes
+are horses animals => yes
+do cows have legs => yes
+do cows have fur => yes
+can cows fly => no
+are cows mammals => yes
+are cows animals => yes
+do pigs have legs => yes
+do pigs have fur => yes
+are pigs mammals => yes
+are pigs animals => yes
+do sheep have legs => yes
+do sheep have fur => yes
+are sheep mammals => yes
+are sheep animals => yes
+do goats have legs => yes
+do goats have fur => yes
+are goats mammals => yes
+are goats animals => yes
+do lions have legs => yes
+do lions have fur => yes
+can lions fly => no
+are lions mammals => yes
+are lions animals => yes
+do tigers have legs => yes
+do tigers have fur => yes
+are tigers mammals => yes
+are tigers animals => yes
+do bears have legs => yes
+do bears have fur => yes
+are bears mammals => yes
+are bears animals => yes
+do wolves have legs => yes
+do wolves have fur => yes
+are wolves mammals => yes
+are wolves animals => yes
+do foxes have legs => yes
+do foxes have fur => yes
+are foxes mammals => yes
+are foxes animals => yes
+do rabbits have legs => yes
+do rabbits have fur => yes
+are rabbits mammals => yes
+are rabbits animals => yes
+do mice have legs => yes
+do mice have fur => yes
+are mice mammals => yes
+are mice animals => yes
+do elephants have legs => yes
+do elephants have fur => no
+are elephants mammals => yes
+are elephants animals => yes
+do monkeys have legs => yes
+do monkeys have fur => yes
+are monkeys mammals => yes
+are monkeys animals => yes
+
+# -- birds: have legs, wings, feathers, lay eggs; most can fly --
+do birds have legs => yes
+do birds have wings => yes
+do birds have feathers => yes
+can birds fly => yes
+are birds animals => yes
+do birds lay eggs => yes
+do eagles have legs => yes
+do eagles have wings => yes
+do eagles have feathers => yes
+can eagles fly => yes
+are eagles birds => yes
+are eagles animals => yes
+do robins have legs => yes
+do robins have wings => yes
+do robins have feathers => yes
+can robins fly => yes
+are robins birds => yes
+are robins animals => yes
+do sparrows have wings => yes
+do sparrows have feathers => yes
+can sparrows fly => yes
+are sparrows birds => yes
+are sparrows animals => yes
+do owls have wings => yes
+do owls have feathers => yes
+can owls fly => yes
+are owls birds => yes
+are owls animals => yes
+do parrots have wings => yes
+do parrots have feathers => yes
+can parrots fly => yes
+are parrots birds => yes
+are parrots animals => yes
+do ducks have wings => yes
+do ducks have feathers => yes
+can ducks fly => yes
+can ducks swim => yes
+are ducks birds => yes
+are ducks animals => yes
+do chickens have wings => yes
+do chickens have feathers => yes
+are chickens birds => yes
+are chickens animals => yes
+do penguins have wings => yes
+do penguins have feathers => yes
+can penguins fly => no
+can penguins swim => yes
+are penguins birds => yes
+are penguins animals => yes
+
+# -- fish: no legs, swim, live in water, lay eggs --
+do fish have legs => no
+can fish swim => yes
+do fish live in water => yes
+do fish have fur => no
+are fish animals => yes
+do fish lay eggs => yes
+do sharks have legs => no
+can sharks swim => yes
+do sharks live in water => yes
+are sharks fish => yes
+are sharks animals => yes
+do salmon have legs => no
+can salmon swim => yes
+do salmon live in water => yes
+are salmon fish => yes
+are salmon animals => yes
+do trout have legs => no
+can trout swim => yes
+are trout fish => yes
+are trout animals => yes
+
+# -- reptiles and amphibians --
+do snakes have legs => no
+do snakes have fur => no
+do snakes have feathers => no
+can snakes fly => no
+are snakes reptiles => yes
+are snakes animals => yes
+do snakes lay eggs => yes
+do lizards have legs => yes
+do lizards have fur => no
+are lizards reptiles => yes
+are lizards animals => yes
+do turtles have legs => yes
+can turtles swim => yes
+are turtles reptiles => yes
+are turtles animals => yes
+do frogs have legs => yes
+can frogs swim => yes
+are frogs animals => yes
+
+# -- insects: six legs, many fly --
+do bees have legs => yes
+do bees have wings => yes
+can bees fly => yes
+are bees insects => yes
+are bees animals => yes
+do ants have legs => yes
+can ants fly => no
+are ants insects => yes
+are ants animals => yes
+do butterflies have wings => yes
+can butterflies fly => yes
+are butterflies insects => yes
+are butterflies animals => yes
+do flies have wings => yes
+can flies fly => yes
+are flies insects => yes
+are flies animals => yes
+
+# -- people --
+do people have legs => yes
+can people fly => no
+are people animals => yes
+do people lay eggs => no
+
+# ---------------------------------------------------------------------------
+# Colors  (concept-graph Q&A: ask "what color is the sky" -> blue)
+# ---------------------------------------------------------------------------
+what color is the sky => blue
+what color is the sea => blue
+what color is grass => green
+what color is a leaf => green
+what color is snow => white
+what color is milk => white
+what color is blood => red
+what color is a strawberry => red
+what color is the sun => yellow
+what color is a banana => yellow
+what color is coal => black
+what color is the night => black
+what color is a cloud => white
+what color is chocolate => brown
+what color is wood => brown
+is the sky blue => yes
+is grass green => yes
+is snow white => yes
+is blood red => yes
+
+# ---------------------------------------------------------------------------
+# Opposites
+# ---------------------------------------------------------------------------
+what is the opposite of hot => cold
+what is the opposite of cold => hot
+what is the opposite of up => down
+what is the opposite of down => up
+what is the opposite of big => small
+what is the opposite of small => big
+what is the opposite of fast => slow
+what is the opposite of slow => fast
+what is the opposite of day => night
+what is the opposite of night => day
+what is the opposite of good => bad
+what is the opposite of bad => good
+what is the opposite of happy => sad
+what is the opposite of open => closed
+what is the opposite of left => right
+what is the opposite of yes => no
+what is the opposite of up => down
+what is the opposite of wet => dry
+what is the opposite of light => dark
+what is the opposite of high => low
+
+# ---------------------------------------------------------------------------
+# Categories  (is a X a Y)
+# ---------------------------------------------------------------------------
+is a dog an animal => yes
+is a cat an animal => yes
+is a rose a flower => yes
+is a tulip a flower => yes
+is an apple a fruit => yes
+is a banana a fruit => yes
+is a carrot a vegetable => yes
+is a car a vehicle => yes
+is a bus a vehicle => yes
+is a hammer a tool => yes
+is a guitar an instrument => yes
+is a chair furniture => yes
+is a dog a plant => no
+is a car an animal => no
+is a rock alive => no
+is a tree a plant => yes
+is the sun a star => yes
+is water a liquid => yes
+is ice a solid => yes
+is a triangle a shape => yes
+
+# ---------------------------------------------------------------------------
+# Numbers and counting
+# ---------------------------------------------------------------------------
+what is one plus one => two
+what is two plus two => four
+what is three plus three => six
+what is two plus three => five
+what is five plus five => ten
+what comes after one => two
+what comes after two => three
+what comes after three => four
+what comes after four => five
+what comes after five => six
+how many legs does a dog have => four
+how many legs does a person have => two
+how many legs does a spider have => eight
+how many legs does an insect have => six
+how many days are in a week => seven
+how many wheels does a car have => four
+how many eyes do people have => two
+
+# ---------------------------------------------------------------------------
+# Days and months  (sequences)
+# ---------------------------------------------------------------------------
+what comes after monday => tuesday
+what comes after tuesday => wednesday
+what comes after wednesday => thursday
+what comes after thursday => friday
+what comes after friday => saturday
+what comes after saturday => sunday
+what comes after sunday => monday
+what comes after january => february
+what comes after february => march
+what comes after march => april
+what comes after april => may
+what comes after june => july
+
+# ---------------------------------------------------------------------------
+# Simple facts about the world
+# ---------------------------------------------------------------------------
+is fire hot => yes
+is ice cold => yes
+is water wet => yes
+is the sun hot => yes
+is the sun bright => yes
+does the sun rise in the east => yes
+does it rain from clouds => yes
+do plants need water => yes
+do plants need light => yes
+do fish need water => yes
+do people need food => yes
+do people need water => yes
+do people need sleep => yes
+can people read => yes
+where do fish live => water
+where do birds build nests => trees
+where do bees make honey => hives
+what do cows eat => grass
+what do rabbits eat => grass
+what do lions eat => meat
+what do birds have => wings
+what does a bee make => honey
+what does a cow give => milk
+what sound does a dog make => woof
+what sound does a cat make => meow
+what sound does a cow make => moo
+what sound does a duck make => quack
+is grass a plant => yes
+is the moon in the sky => yes
+are stars in the sky => yes
