@@ -361,8 +361,8 @@ only); turning arbitrary prose into facts is the open, hard problem (and heavy p
 back toward the symbolic style).  But similarity from raw text is free and continual, exactly
 in the project's spirit.
 
-A sample corpus `src/prose.txt` (history + geography written as plain sentences) ships with
-the system.  `(read-text-file "prose.txt")` grows the KB *from prose*: it teaches new
+A ~370-sentence corpus `src/prose.txt` (history, world geography, and science, written as
+plain sentences) ships with the system.  `(read-text-file "prose.txt")` grows the KB *from prose*: it teaches new
 capitals (Reykjavik → Iceland), people ("who was Ada Lovelace" → a mathematician), and
 relational facts ("what is the birthplace of democracy" → Greece) that the curated KB never
 contained, and the new entities cluster by similarity (Iceland's nearest neighbours come out

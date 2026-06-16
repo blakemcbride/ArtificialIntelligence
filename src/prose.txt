@@ -1,39 +1,144 @@
-Paris is the capital of France. France is a country in Europe. France is a country. The Eiffel Tower is in Paris. The Seine is a river in France.
-Rome is the capital of Italy. Italy is a country in Europe. Italy is a country. The Colosseum is in Rome. Rome is an ancient city.
+Paris is the capital of France. France is a country in Europe. France is a country.
+Berlin is the capital of Germany. Germany is a country in Europe. Germany is a country.
+Rome is the capital of Italy. Italy is a country in Europe. Italy is a country.
 Madrid is the capital of Spain. Spain is a country in Europe. Spain is a country.
-Berlin is the capital of Germany. Germany is a country in Europe. The Rhine is a river in Germany.
-London is the capital of England. The Thames is a river in England. Big Ben is in London.
-Athens is the capital of Greece. Greece is a country in Europe. The Acropolis is in Athens. The Parthenon is in Athens. Greece is the birthplace of democracy.
-Lisbon is the capital of Portugal. Portugal is a country in Europe.
-Vienna is the capital of Austria. The Danube is a river in Europe.
-Reykjavik is the capital of Iceland. Iceland is a country in Europe. Iceland is a country. Iceland is an island.
-Oslo is the capital of Norway. Norway is a country in Europe.
-Amsterdam is the capital of the Netherlands. The Netherlands is a country in Europe.
-The Alps are mountains in Europe. Mont Blanc is a mountain in the Alps.
+Lisbon is the capital of Portugal. Portugal is a country in Europe. Portugal is a country.
+London is the capital of England. England is a country in Europe. England is a country.
+Dublin is the capital of Ireland. Ireland is a country in Europe. Ireland is a country.
+Athens is the capital of Greece. Greece is a country in Europe. Greece is a country.
+Oslo is the capital of Norway. Norway is a country in Europe. Norway is a country.
+Stockholm is the capital of Sweden. Sweden is a country in Europe. Sweden is a country.
+Copenhagen is the capital of Denmark. Denmark is a country in Europe. Denmark is a country.
+Helsinki is the capital of Finland. Finland is a country in Europe. Finland is a country.
+Warsaw is the capital of Poland. Poland is a country in Europe. Poland is a country.
+Vienna is the capital of Austria. Austria is a country in Europe. Austria is a country.
+Bern is the capital of Switzerland. Switzerland is a country in Europe. Switzerland is a country.
+Brussels is the capital of Belgium. Belgium is a country in Europe. Belgium is a country.
+Amsterdam is the capital of Netherlands. Netherlands is a country in Europe. Netherlands is a country.
+Budapest is the capital of Hungary. Hungary is a country in Europe. Hungary is a country.
+Reykjavik is the capital of Iceland. Iceland is a country in Europe. Iceland is a country.
+Bucharest is the capital of Romania. Romania is a country in Europe. Romania is a country.
+Kyiv is the capital of Ukraine. Ukraine is a country in Europe. Ukraine is a country.
+Tokyo is the capital of Japan. Japan is a country in Asia. Japan is a country.
+Beijing is the capital of China. China is a country in Asia. China is a country.
+New Delhi is the capital of India. India is a country in Asia. India is a country.
+Bangkok is the capital of Thailand. Thailand is a country in Asia. Thailand is a country.
+Hanoi is the capital of Vietnam. Vietnam is a country in Asia. Vietnam is a country.
+Jakarta is the capital of Indonesia. Indonesia is a country in Asia. Indonesia is a country.
+Tehran is the capital of Iran. Iran is a country in Asia. Iran is a country.
+Baghdad is the capital of Iraq. Iraq is a country in Asia. Iraq is a country.
+Riyadh is the capital of Saudi Arabia. Saudi Arabia is a country in Asia. Saudi Arabia is a country.
+Cairo is the capital of Egypt. Egypt is a country in Africa. Egypt is a country.
+Nairobi is the capital of Kenya. Kenya is a country in Africa. Kenya is a country.
+Abuja is the capital of Nigeria. Nigeria is a country in Africa. Nigeria is a country.
+Addis Ababa is the capital of Ethiopia. Ethiopia is a country in Africa. Ethiopia is a country.
+Accra is the capital of Ghana. Ghana is a country in Africa. Ghana is a country.
+Rabat is the capital of Morocco. Morocco is a country in Africa. Morocco is a country.
+Brasilia is the capital of Brazil. Brazil is a country in South America. Brazil is a country.
+Buenos Aires is the capital of Argentina. Argentina is a country in South America. Argentina is a country.
+Santiago is the capital of Chile. Chile is a country in South America. Chile is a country.
+Lima is the capital of Peru. Peru is a country in South America. Peru is a country.
+Bogota is the capital of Colombia. Colombia is a country in South America. Colombia is a country.
+Ottawa is the capital of Canada. Canada is a country in North America. Canada is a country.
+Mexico City is the capital of Mexico. Mexico is a country in North America. Mexico is a country.
+Havana is the capital of Cuba. Cuba is a country in North America. Cuba is a country.
+Canberra is the capital of Australia. Australia is a country.
+Moscow is the capital of Russia. Russia is a country.
+Ankara is the capital of Turkey. Turkey is a country.
 
-Tokyo is the capital of Japan. Japan is a country in Asia. Japan is an island nation. Mount Fuji is a mountain in Japan.
-Beijing is the capital of China. China is a country in Asia. The Great Wall is in China.
-New Delhi is the capital of India. India is a country in Asia. The Taj Mahal is in India. The Ganges is a river in India.
-Bangkok is the capital of Thailand. Thailand is a country in Asia.
-The Himalayas are mountains in Asia. Mount Everest is a mountain in the Himalayas. Mount Everest is the tallest mountain.
+Asia is a continent. Africa is a continent. Europe is a continent. North America is a continent. South America is a continent. Australia is a continent. Antarctica is a continent.
+The Pacific is an ocean. The Atlantic is an ocean. The Indian is an ocean. The Arctic is an ocean.
+The Mediterranean is a sea. The Caribbean is a sea. The Red Sea is a sea. The Black Sea is a sea.
+The Sahara is a desert in Africa. The Gobi is a desert in Asia. The Kalahari is a desert in Africa. The Atacama is a desert in South America.
 
-Cairo is the capital of Egypt. Egypt is a country in Africa. The pyramids are in Egypt. The Sphinx is in Egypt. The Nile is a river in Africa.
-Nairobi is the capital of Kenya. Kenya is a country in Africa.
-The Sahara is a desert in Africa.
+The Nile is a river in Africa.
+The Amazon is a river in South America.
+The Mississippi is a river in North America.
+The Yangtze is a river in Asia.
+The Ganges is a river in Asia.
+The Danube is a river in Europe.
+The Rhine is a river in Europe.
+The Seine is a river in Europe.
+The Thames is a river in Europe.
+The Congo is a river in Africa.
+The Mekong is a river in Asia.
+The Volga is a river in Europe.
 
-Washington is the capital of the United States. The United States is a country in North America.
-Ottawa is the capital of Canada. Canada is a country in North America.
-Brasilia is the capital of Brazil. Brazil is a country in South America. The Amazon is a river in South America. The Amazon is a rainforest.
-Lima is the capital of Peru. Peru is a country in South America. Machu Picchu is in Peru.
-Buenos Aires is the capital of Argentina. The Andes are mountains in South America.
-Canberra is the capital of Australia. Australia is a continent. The Sydney Opera House is in Australia.
+Mount Everest is a mountain. Mount Everest is the tallest mountain. Mount Everest is in Asia.
+Mount Kilimanjaro is a mountain in Africa. Mount Fuji is a mountain in Japan. Mont Blanc is a mountain in Europe.
+The Alps are mountains in Europe. The Himalayas are mountains in Asia. The Andes are mountains in South America. The Rockies are mountains in North America.
 
-Latin is the language of ancient Rome. The Roman Empire is an ancient empire. Rome is the center of the Roman Empire.
-Egypt is famous for the pyramids. The pyramids are ancient monuments. Greece is famous for philosophy.
+The eiffel tower is in France.
+The great wall is in China.
+The pyramids is in Egypt.
+The colosseum is in Italy.
+The taj mahal is in India.
+Big ben is in England.
+The acropolis is in Greece.
+The parthenon is in Greece.
+Machu picchu is in Peru.
+The sphinx is in Egypt.
+Stonehenge is in England.
+The statue of liberty is in The United States.
+Christ the redeemer is in Brazil.
+The sydney opera house is in Australia.
 
-Albert Einstein was a physicist. Isaac Newton was a physicist. Galileo was an astronomer. Charles Darwin was a scientist.
-William Shakespeare was a playwright. Leonardo da Vinci was an artist. Michelangelo was an artist.
-Napoleon was an emperor. Cleopatra was the queen of Egypt. Julius Caesar was a Roman general.
-Aristotle was a philosopher. Socrates was a philosopher. Plato was a philosopher.
-Marie Curie was a scientist. Ada Lovelace was a mathematician. Alan Turing was a mathematician.
-Florence Nightingale was a nurse. Christopher Wren was an architect. Charles Dickens was a writer.
+Sydney is a city in Australia.
+Toronto is a city in Canada.
+Mumbai is a city in India.
+Shanghai is a city in China.
+Istanbul is a city in Turkey.
+Barcelona is a city in Spain.
+Munich is a city in Germany.
+Naples is a city in Italy.
+Kyoto is a city in Japan.
+Rio De Janeiro is a city in Brazil.
+Los Angeles is a city in The United States.
+Chicago is a city in The United States.
+
+Latin is the language of ancient Rome. Rome is an ancient city. The Roman Empire is an ancient empire. Rome is the center of the Roman Empire.
+Greek is the language of ancient Greece. Athens is an ancient city. Greece is the birthplace of democracy. Sparta is an ancient city.
+Egypt is famous for the pyramids. The pyramids are ancient monuments. The pharaoh is the ruler of ancient Egypt.
+The Renaissance is a period in history. The Middle Ages are a period in history. The Stone Age is a period in history.
+
+Albert Einstein was a physicist. Isaac Newton was a physicist. Galileo was an astronomer.
+Nicolaus Copernicus was an astronomer. Johannes Kepler was an astronomer. Stephen Hawking was a physicist.
+Michael Faraday was a scientist. Louis Pasteur was a scientist. Charles Darwin was a scientist.
+Gregor Mendel was a scientist. Marie Curie was a scientist. Nikola Tesla was an inventor.
+Thomas Edison was an inventor. Alexander Graham Bell was an inventor. Johannes Gutenberg was an inventor.
+Ada Lovelace was a mathematician. Alan Turing was a mathematician. Pythagoras was a mathematician.
+Euclid was a mathematician. Archimedes was a mathematician. Leonardo Da Vinci was an artist.
+Michelangelo was an artist. Raphael was a painter. Pablo Picasso was a painter.
+Vincent Van Gogh was a painter. Rembrandt was a painter. Claude Monet was a painter.
+William Shakespeare was a playwright. Charles Dickens was a writer. Leo Tolstoy was a writer.
+Mark Twain was a writer. Jane Austen was a writer. Ernest Hemingway was a writer.
+Homer was a poet. Dante was a poet. Ludwig Van Beethoven was a composer.
+Wolfgang Mozart was a composer. Johann Sebastian Bach was a composer. Frederic Chopin was a composer.
+Antonio Vivaldi was a composer. Aristotle was a philosopher. Socrates was a philosopher.
+Plato was a philosopher. Confucius was a philosopher. Immanuel Kant was a philosopher.
+Rene Descartes was a philosopher. Christopher Columbus was an explorer. Ferdinand Magellan was an explorer.
+Marco Polo was an explorer. James Cook was an explorer. Vasco Da Gama was an explorer.
+Napoleon was an emperor. Julius Caesar was a roman general. Alexander The Great was a king.
+Abraham Lincoln was a president. George Washington was a president. Winston Churchill was a prime minister.
+Mahatma Gandhi was a leader. Nelson Mandela was a leader. Florence Nightingale was a nurse.
+Christopher Wren was an architect.
+Cleopatra was the queen of Egypt. Tutankhamun was a pharaoh of Egypt. Victoria was the queen of England.
+
+Mercury is a planet. Venus is a planet. Earth is a planet. Mars is a planet.
+Jupiter is a planet. Saturn is a planet. Uranus is a planet. Neptune is a planet.
+Jupiter is the largest planet. The Sun is a star. The Moon is a satellite. The Earth is a planet. The solar system is in the galaxy.
+Gold is a metal. Silver is a metal. Iron is a metal. Copper is a metal. Aluminum is a metal.
+Oxygen is a gas. Hydrogen is a gas. Nitrogen is a gas. Water is a liquid. Ice is a solid. Steam is a gas.
+The heart is an organ. The brain is an organ. The lungs are organs. Blood is a liquid. Bone is a solid.
+Biology is the study of life.
+Chemistry is the study of matter.
+Astronomy is the study of stars.
+Geology is the study of rocks.
+Botany is the study of plants.
+Zoology is the study of animals.
+History is the study of the past.
+Mathematics is the study of numbers.
+Psychology is the study of the mind.
+Biology is a science. Chemistry is a science. Physics is a science. Astronomy is a science. Geology is a science.
+
+Einstein was a physicist. Newton was a physicist. Copernicus was an astronomer. Kepler was an astronomer. Hawking was a physicist. Faraday was a scientist. Pasteur was a scientist. Darwin was a scientist. Mendel was a scientist. Curie was a scientist. Tesla was an inventor. Edison was an inventor. Bell was an inventor. Gutenberg was an inventor. Lovelace was a mathematician. Turing was a mathematician. Vinci was an artist. Picasso was a painter. Gogh was a painter. Monet was a painter. Shakespeare was a playwright. Dickens was a writer. Tolstoy was a writer. Twain was a writer. Austen was a writer. Hemingway was a writer. Beethoven was a composer. Mozart was a composer. Bach was a composer. Chopin was a composer. Vivaldi was a composer. Kant was a philosopher. Descartes was a philosopher. Columbus was an explorer. Magellan was an explorer. Polo was an explorer. Cook was an explorer. Gama was an explorer. Caesar was a roman general. Lincoln was a president. Washington was a president. Churchill was a prime minister. Gandhi was a leader. Mandela was a leader. Nightingale was a nurse. Wren was an architect.
