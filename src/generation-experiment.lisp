@@ -81,13 +81,52 @@
 	(dolist (b uniq)
 	  (unless (string= a b) (bump2 *cooc* a b)))))))           ; unordered co-occurrence
 
+;;; ============ generator #2 substrate: relational facts (subject rel object) ==========
+;;; The same idea as the live system's concept graph: pull simple declarative facts out of
+;;; the prose as triples, so realization can be GROUNDED in a verified edge instead of a
+;;; free word-walk.  This is what kills the bigram's "capital of latvia" class of error.
+(defparameter *facts* nil)   ; list of (subject-string relation-keyword object-string)
+
+(defun jw (lst) (format nil "~{~a~^ ~}" lst))
+
+(defun find-sub (sub seq)
+  "Index where token list SUB occurs in token list SEQ, else NIL."
+  (let ((ls (length sub)) (ln (length seq)))
+    (loop for i from 0 to (- ln ls)
+	  when (loop for j from 0 below ls always (string= (nth j sub) (nth (+ i j) seq)))
+	    do (return i))))
+
+(defun split-on (sep words)
+  "If token list SEP occurs in WORDS, return (values LEFT RIGHT) around its first occurrence."
+  (let ((i (find-sub sep words)))
+    (when i (values (subseq words 0 i) (subseq words (+ i (length sep)))))))
+
+(defun extract-facts (words)
+  "Pull relational triples out of one sentence's WORDS (most specific patterns first)."
+  (let (l r)
+    (flet ((emit (s rel o) (when (and s o) (push (list (jw s) rel (jw o)) *facts*))))
+      (cond
+	((multiple-value-setq (l r) (split-on '("is" "the" "capital" "of") words)) (emit l :capital-of r))
+	((multiple-value-setq (l r) (split-on '("is" "the" "language" "of") words)) (emit l :language-of r))
+	((multiple-value-setq (l r) (split-on '("is" "a" "city" "in") words)) (emit l :city-of r))
+	((multiple-value-setq (l r) (split-on '("is" "a" "city" "of") words)) (emit l :city-of r))
+	((multiple-value-setq (l r) (split-on '("is" "a" "country" "in") words))
+	 (emit l :is-a '("country")) (emit l :located-in r))
+	((multiple-value-setq (l r) (split-on '("was" "a") words)) (emit l :was-a r))
+	((multiple-value-setq (l r) (split-on '("was" "an") words)) (emit l :was-a r))
+	((multiple-value-setq (l r) (split-on '("is" "a") words)) (emit l :is-a r))
+	((multiple-value-setq (l r) (split-on '("is" "an") words)) (emit l :is-a r))
+	((multiple-value-setq (l r) (split-on '("is" "in") words)) (emit l :located-in r))))))
+
 (defun read-corpus (path)
   (with-open-file (s path)
     (let ((str (make-string (file-length s))))
       (read-sequence str s)
       (setf *corpus-text* (string-downcase str))
       (dolist (sent (split-sentences str))
-	(learn-sentence (tokenize sent))))))
+	(let ((w (tokenize sent)))
+	  (learn-sentence w)        ; bigram chain + co-occurrence (generator #1)
+	  (extract-facts w))))))    ; relational triples           (generator #2)
 
 ;;; --------------------------------------------------- 1. content selection (topic) ---
 (defun idf (w) (log (/ (+ 1.0d0 *n*) (+ 1.0d0 (gethash w *df* 0)))))
@@ -153,34 +192,97 @@
       (when (>= (length results) n) (return)))
     (nreverse results)))
 
-;;; ----------------------------------------------------------------------- the demo ---
+;;; ============== generator #2: grounded realization (facts + frames) =================
+;;; Assemble a description by SELECTING verified triples that mention the topic and
+;;; rendering each through a fixed frame (the slot-fill idea behind `compose', one frame per
+;;; relation).  Several facts are aggregated into one short paragraph -- discourse the
+;;; retrieval system can't produce (it returns a single stored response).  Each object comes
+;;; from a real edge, so it can't say "capital of latvia"; the cost is it can only state
+;;; what was actually read (no leaps).
 (defun cap (s)
   (if (plusp (length s)) (concatenate 'string (string-upcase (subseq s 0 1)) (subseq s 1)) s))
 
+(defun mentions (topic s) (member topic (tokenize s) :test #'string=))
+
+(defun art (word)
+  "\"a\" or \"an\" to agree with the first sound of WORD (vowel-letter heuristic)."
+  (if (and (plusp (length word)) (find (char word 0) "aeiou")) "an" "a"))
+
+(defun fact-other (topic rel side)
+  "OTHER side of every triple with REL where TOPIC is on SIDE (:subj or :obj), de-duped."
+  (remove-duplicates
+   (loop for (s r o) in *facts*
+	 when (and (eq r rel) (mentions topic (if (eq side :subj) s o)))
+	   collect (if (eq side :subj) o s))
+   :test #'string= :from-end t))
+
+(defun human-list (items)
+  (cond ((null items) "")
+	((null (cdr items)) (car items))
+	((null (cddr items)) (format nil "~a and ~a" (first items) (second items)))
+	(t (format nil "~{~a~^, ~}, and ~a"
+		   (butlast items) (car (last items))))))
+
+(defun describe-grounded (topic)
+  "A short factual paragraph about TOPIC, assembled from triples.  Returns (values list-of-
+   sentence-strings facts-used)."
+  (let* ((identity (loop for (s r o) in *facts*           ; topic IS-A / WAS-A something
+			 when (and (member r '(:is-a :was-a)) (mentions topic s))
+			   return (list s r o)))
+	 (region    (first (fact-other topic :located-in :subj)))   ; topic is in X
+	 (capital   (first (fact-other topic :capital-of :obj)))    ; X is the capital of topic
+	 (is-cap-of (first (fact-other topic :capital-of :subj)))   ; topic is the capital of X
+	 (language  (first (fact-other topic :language-of :obj)))
+	 (cities    (fact-other topic :city-of :obj))
+	 (landmarks (set-difference (fact-other topic :located-in :obj) cities :test #'string=))
+	 (out nil) (used 0))
+    (flet ((say (fmt &rest a) (push (apply #'format nil fmt a) out) (incf used)))
+      (when identity
+	(destructuring-bind (s r o) identity
+	  (say "~a ~a ~a ~a." (cap s) (if (eq r :was-a) "was" "is") (art o) o)))
+      (when is-cap-of (say "~a is the capital of ~a." (cap topic) is-cap-of))
+      (when region    (say "It is in ~a." region))
+      (when capital   (say "Its capital is ~a." capital))
+      (when language  (say "~a is its main language." (cap language)))
+      (when cities    (say "Cities in ~a include ~a." topic
+			   (human-list (subseq cities 0 (min 3 (length cities))))))
+      (when landmarks (say "~a ~a in ~a." (cap (human-list (subseq landmarks 0 (min 3 (length landmarks)))))
+			   (if (cdr landmarks) "are" "is") topic)))
+    (values (nreverse out) used)))
+
+;;; ----------------------------------------------------------- head-to-head demo ---
 (defun novel-p (sent)
   "True if SENT (as text) does NOT appear verbatim in the corpus -- i.e. it was generated."
   (not (search (format nil "~{~a~^ ~}" sent) *corpus-text*)))
 
 (defun describe-topic (topic)
-  (format t "~%==== tell me about ~a ====~%" (string-upcase topic))
+  (format t "~%================ tell me about ~a ================~%" (string-upcase topic))
   (let ((assoc (top-associates topic 8)))
-    (cond
-      ((null assoc)
-       (format t "  (\"~a\" is not in this corpus -- nothing to say about it)~%" topic))
-      (t
-       (format t "  content selection (top associates): ~{~a~^, ~}~%" assoc)
-       (setf *seed* 1)                                ; reset PRNG per topic -> reproducible
-       (let ((sents (generate-about topic 3)))
-	 (if sents
-	     (dolist (s sents)
-	       (format t "  -> ~a.  ~a~%" (cap (format nil "~{~a~^ ~}" s))
-		       (if (novel-p s) "(novel)" "(seen verbatim)")))
-	     (format t "  (too little data after \"~a\" to continue a sentence)~%" topic)))))))
+    (format t "content selection (top associates): ~a~%"
+	    (if assoc (format nil "~{~a~^, ~}" assoc) "(none -- topic not in corpus)"))
+    ;; generator #1: bigram chain (novel but ungrounded)
+    (format t "~%  [1] bigram chain (fluent-ish, may be FALSE):~%")
+    (setf *seed* 1)
+    (let ((sents (and assoc (generate-about topic 3))))
+      (if sents
+	  (dolist (s sents)
+	    (format t "      ~a  ~a~%" (cap (format nil "~{~a~^ ~}." s))
+		    (if (novel-p s) "(novel)" "(seen verbatim)")))
+	  (format t "      (nothing -- too little data)~%")))
+    ;; generator #2: grounded facts + frames (true, assembled)
+    (format t "~%  [2] grounded facts + frames (TRUE, assembled from the concept store):~%")
+    (multiple-value-bind (sents used) (describe-grounded topic)
+      (if sents
+	  (format t "      ~a  (assembled from ~d fact~:p)~%"
+		  (format nil "~{~a~^ ~}" sents) used)
+	  (format t "      (no facts extracted about this topic)~%")))))
 
 (read-corpus "prose.txt")
-(format t "learned ~:d sentences, vocabulary ~:d words, ~:d transition heads~%"
-	*n* (hash-table-count *df*) (hash-table-count *trans*))
+(format t "learned ~:d sentences, vocabulary ~:d words, ~:d transition heads, ~:d facts~%"
+	*n* (hash-table-count *df*) (hash-table-count *trans*) (length *facts*))
 (dolist (tp '("france" "egypt" "einstein" "rome" "river" "florida"))
   (describe-topic tp))
-(format t "~%(florida shows the data-coverage limit: with nothing read about it, there is~%")
-(format t " nothing to generate -- exactly what more reading, or a broader corpus, fixes.)~%")
+(format t "~%Takeaway: [1] is novel but unreliable; [2] is reliable but only restates what~%")
+(format t "was read.  Phase 8 = [2]'s grounding to choose WHAT is true, [1]'s chain (and~%")
+(format t "higher-order context) to vary HOW it is said.  florida: absent from the corpus,~%")
+(format t "so both stay silent -- a coverage gap, fixed by reading, not an architecture wall.~%")
