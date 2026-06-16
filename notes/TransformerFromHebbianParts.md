@@ -48,6 +48,7 @@ remains open: composing them at depth with a local rule.
 | **Learned content weights** | `learned-qk-attention-experiment.lisp` | A content-based head whose **continuous query-key weight matrix `M`** (score = `qᵀ M k`) is learned by a local reward-modulated Hebbian rule. Discovers `M ≈ identity` ("attend to the same token, copy its successor") — a **general** operation that does in-context learning on **tokens never seen in training**. | one layer; single head |
 | **Composition at depth** | `deep-composition-experiment.lisp` | Two layers trained by **local, layer-wise objectives** (no backprop) **compose** into an induction circuit, and **depth is required**: with a position-local value read, a single trained content layer can only return the matched token (0.37), while the 2-layer circuit returns its successor (1.00, incl. novel tokens). Layer 1 learns the previous-token head from its *own* target; layer 2 a continuous content matrix on top. | greedy per-layer (not one unified rule); 2 layers; toy scale |
 | **One unified rule at depth** | `forward-forward-experiment.lisp` | **Forward-Forward**: the *same* local goodness objective at **every** layer, **no backprop, no weight transport**. Trains nets to depth 5; deepest representation stays discriminative; all depths beat a linear model on a nonlinear task. | depth doesn't *improve* a toy task (FF finicky); not yet applied to attention |
+| **Uniting them (the frontier)** | `ff-attention-experiment.lisp` | Deep self-attention trained **entirely** by Forward-Forward (one local rule, no backprop; closed-form local update `x_q ⊗ w`). **Above chance but not competent** (≈0.30 vs 0.17). Maps *why* it's hard: FF's activity-goodness is a poor objective for context-dependent prediction; the reward rule has a good objective but credit-through-depth is unsolved. | **the open research problem** — backprop-free transformer training is unsolved |
 
 All of the above use only local rules — outer-product binding and reward-modulated Hebbian
 updates — and **no backpropagation**.
@@ -88,17 +89,31 @@ depths beat a linear model on a nonlinear task. *Honest finding:* on a task one 
 already solves, added depth doesn't raise accuracy (naive FF is finicky) — the milestone is the
 **rule** (one local objective, arbitrary depth, no backprop), not a depth win on a toy task.
 
-So both halves now exist in PoC form: cooperating learned layers
+So both halves exist in PoC form: cooperating learned layers
 (`deep-composition-experiment.lisp`) and a single unified local rule at depth
-(`forward-forward-experiment.lisp`). What remains is **putting them together at scale**:
+(`forward-forward-experiment.lisp`). **Putting them together was attempted**
+(`ff-attention-experiment.lisp`): a deep self-attention stack trained **entirely** by
+Forward-Forward — one local rule, no backprop, each layer updated by a closed-form local
+outer product (the within-layer goodness gradient works out to `x_q ⊗ w`).
 
-> Train **deep ATTENTION** (the learned-attention / induction layers) by **one unified local
-> rule** (Forward-Forward / predictive-coding style) across **many** layers and **multi-head**,
-> at a scale where *competence*, not just mechanism, shows.
+**Honest result: above chance but not competent** (best ≈0.30 at depth 3 vs 0.17 chance on
+in-context induction). And the *reason* sharpens the frontier into a precise open question:
 
-The two lines of work — content-based attention learned locally, and a unified local deep-
-learning rule — have not yet been combined; doing so is the genuine research frontier. The
-established backprop-free approaches are the route:
+- **FF's objective is the wrong shape for context-dependent prediction.** Its "goodness" is
+  *activity magnitude*; but the correct next token varies per prompt, so "how active the
+  appended token makes the net" is a poor signal to maximize.
+- **The reward rule (`learned-qk`) has the *right* objective** (it learns induction at 1.00)
+  — but **credit-through-depth without backprop is unsolved** for many layers.
+
+So each half works alone, and combining them fails for an understandable reason. The open
+problem, now sharply stated:
+
+> Find a **local** learning rule that has a **good (compatibility) objective** *and* assigns
+> **credit through depth** — so deep attention can be trained without backprop to real
+> competence.
+
+This is genuinely unsolved (backprop-free training of transformers is an open research
+problem). The established backprop-free approaches are the route toward it:
 
 - **Predictive coding** (local error units, Hebbian-like updates that approximate the gradient),
 - **Forward-Forward** (Hinton 2022 — a local goodness objective per layer, no backward pass),
@@ -124,13 +139,15 @@ goals: local, continual, no global gradient.
 
 ## 6. Where it stands, in one line
 
-> From "can a Hebbian net even learn 'is a'?" to **attention composed at depth under local
-> learning** *and* **a single unified local rule training a deep net with no backprop** — every
-> transformer ingredient now has a local-learning PoC; the open frontier is **uniting them**:
-> deep attention trained by one unified local rule, at a scale where competence shows.
+> From "can a Hebbian net even learn 'is a'?" to every transformer ingredient rebuilt with
+> local, no-backprop learning — and a direct attempt to unite them (deep attention trained
+> entirely by Forward-Forward) that lands **above chance but not competent**, sharpening the
+> one open problem to: *a local rule with a good (compatibility) objective that also assigns
+> credit through depth*. That last step is genuinely unsolved — and now precisely mapped.
 
 *Files:* `src/attention-stack-experiment.lisp`, `src/induction-head-experiment.lisp`,
 `src/induction.lisp`, `src/learned-attention-experiment.lisp`,
 `src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`,
-`src/deep-composition-experiment.lisp`, `src/forward-forward-experiment.lisp`.
+`src/deep-composition-experiment.lisp`, `src/forward-forward-experiment.lisp`,
+`src/ff-attention-experiment.lisp`.
 *See also:* `Plan.md` Phase 10, `CLAUDE.md` (component map), `notes/BlockDiagram.tex`.
