@@ -321,6 +321,43 @@ novel word lands near its kin instead of falling off a cliff:
 follow-ups, but it has no crisp boundaries — so *counting* a category stays with the exact
 concept graph, while similarity uses the vectors. The two are complementary.)
 
+### Generation — "tell me about X" and "why" (Phase 8)
+
+Everything above either *recalls* an answer or *infers* membership. Generation **assembles a
+new sentence** from many facts. Out of the box (the starter KB has world geography), just
+ask:
+
+```lisp
+(respond "tell me about france")
+;; => France is a country. It is in europe. Its capital is paris.
+```
+
+It also reads facts from plain prose — teach it more and the description grows:
+
+```lisp
+(read-text "Paris is the capital of France. French is the language of France.
+            Marseille is a city in France. The louvre is in France.")
+(respond "tell me about france")
+;; => France is a country. It is in europe. Its capital is paris.
+;;    Its language is french. Cities in france include marseille.
+;;    The louvre is in france.
+```
+
+`why` explains an **is-a chain**:
+
+```lisp
+(read-text "A cat is a mammal. A mammal is an animal.")
+(respond "why is a cat an animal")
+;; => A cat is an animal because a cat is a mammal, and a mammal is an animal.
+```
+
+Phrasings recognized: `tell me about X`, `describe X`, `what do you know about X`, and
+`why is X a Y`. A recognized request is **owned** by the generator — it answers from real,
+grounded facts or says it doesn't know; it never makes something up. (How it works: clean
+`(subject relation object)` triples are captured as you teach/read, then rendered through
+per-relation templates and aggregated into a paragraph — Hebbian counting, no backprop. See
+`Plan.md` Phase 8 and `src/generation-experiment.lisp`.)
+
 ---
 
 ## 5. A complete worked example
@@ -407,6 +444,8 @@ human-readable s-expression — you can peek at it.
 | Get the system's answer to an input | `(respond "Do cats purr?")` |
 | Ask conversationally (resolves follow-ups) | `(ask "and cats?")` |
 | Ask a computed question (learned operation) | `(respond "how many animals do you know")` |
+| Generate a description of a topic | `(respond "tell me about france")` |
+| Ask why something is a category | `(respond "why is a cat an animal")` |
 | Find similar concepts (distributed vectors) | `(nearest "dog")` / `(similarity "dog" "cat")` |
 | Ask if an input generalizes to an answer | `(infer-p "Do horses walk on their legs?" "yes")` |
 | Get the generalization strength (+ subject) | `(infer-strength "Do horses walk on their legs?" "yes")` |
