@@ -1,7 +1,7 @@
 
 (defpackage "persist"
   (:use "COMMON-LISP")
-  (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*"))
+  (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*" "SYSTEM-STATS"))
 
 (in-package "persist")
 (provide "persist")
@@ -109,7 +109,8 @@
 		   :copy-cues (copy-cues->alist)
 		   :templates (templates->alist)
 		   :op-templates (op-templates->alist)
-		   :cooccur (cooccur->alist))
+		   :cooccur (cooccur->alist)
+		   :facts-learned *facts-learned*)
 	     s)
       (terpri s)))
   path)
@@ -168,6 +169,7 @@
       (let ((tab (make-hash-table :test 'equal)))
 	(dolist (oc (cdr pair)) (setf (gethash (car oc) tab) (cdr oc)))
 	(setf (gethash (car pair) *cooccur*) tab)))
+    (setf *facts-learned* (or (getf data :facts-learned) 0))   ; restore the learned-facts count
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
@@ -195,3 +197,31 @@
   "Replace the current knowledge base with the one stored at PATH.  T if loaded, NIL if
    the file is missing."
   (load-network path))
+
+;;; --- System stats ----------------------------------------------------------------
+(defun system-stats ()
+  "Print a summary of the system's size and contents, and return it as a plist.
+   Numbers: facts learned (cumulative), vocabulary, neurons, dendrites, output roots,
+   associations, responses, concept states, concept-graph edges, copy cues, templates,
+   learned operations, and distributed-vector vocabulary."
+  (let* ((neurons (collect-neurons))
+	 (dendrites (reduce #'+ neurons :key (lambda (n) (length (neuron-axon n))) :initial-value 0))
+	 (cg 0))
+    (maphash (lambda (k tab) (declare (ignore k)) (incf cg (hash-table-count tab))) *concept-graph*)
+    (let ((stats (list :facts-learned    *facts-learned*
+		       :vocabulary       (hash-table-count *dictionary*)
+		       :neurons          (length neurons)
+		       :dendrites        dendrites
+		       :output-roots     (length *output-roots*)
+		       :associations     (length *associations*)
+		       :responses        (hash-table-count *responses*)
+		       :concept-states   (hash-table-count *concepts*)
+		       :concept-edges    (floor cg 2)
+		       :copy-cues        (hash-table-count *copy-cues*)
+		       :templates        (hash-table-count *templates*)
+		       :operations       (hash-table-count *op-templates*)
+		       :vector-words     (hash-table-count *cooccur*))))
+      (format t "~&--- system stats ---~%")
+      (loop for (k v) on stats by #'cddr
+	    do (format t "  ~16a ~:d~%" (string-downcase (symbol-name k)) v))
+      stats)))

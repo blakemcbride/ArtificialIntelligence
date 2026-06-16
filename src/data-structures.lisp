@@ -32,6 +32,7 @@
 	   "*COOCCUR*"
 	   "*VCACHE*"
 	   "*VEC-MEAN*"
+	   "*FACTS-LEARNED*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -55,6 +56,7 @@
 (defparameter *cooccur* (make-hash-table :test 'equal)) ; word -> (hash word -> count): co-occurrence counts behind the distributed concept vectors
 (defparameter *vcache* (make-hash-table :test 'equal)) ; derived concept-vector cache (rebuilt from *cooccur*; cleared on reset/reload)
 (defparameter *vec-mean* nil)                          ; cached global mean of concept vectors
+(defparameter *facts-learned* 0)                       ; cumulative count of facts learned (any source); persisted
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -70,7 +72,8 @@
   (setq *op-templates* (make-hash-table :test 'equal))
   (setq *cooccur* (make-hash-table :test 'equal))
   (setq *vcache* (make-hash-table :test 'equal))
-  (setq *vec-mean* nil))
+  (setq *vec-mean* nil)
+  (setq *facts-learned* 0))
 
 (defstruct neuron
   "An unnamed neuron"

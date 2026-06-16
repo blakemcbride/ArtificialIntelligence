@@ -222,6 +222,7 @@
    Finally the correct root's threshold adapts and unused associations decay.
    If CORRECT is an operation answer (e.g. \"count animals\"), instead learn what the
    question MEANS (note-operation) and return early -- no literal answer is stored."
+  (incf *facts-learned*)            ; count every fact learned, from any source
   (when (operation-answer-p (as-words correct))
     (let ((guess (respond (as-words input))))
       (note-operation (as-words input) (as-words correct))

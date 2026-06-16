@@ -616,6 +616,23 @@
   (check "read-text: particle surname kept (van gogh -> a painter)"
          (equal '("a" "painter") (ask "who was van gogh")))
 
+  ;; ===================== Facts counter + system stats =====================
+  (format t "~%Stats tests~%")
+  (reset)
+  (check "facts-learned starts at 0 after reset" (= 0 *facts-learned*))
+  (learn "do cats purr" "yes")
+  (learn "do dogs bark" "yes")
+  (check "facts-learned increments on every learn" (= 2 *facts-learned*))
+  (let ((s (system-stats)))
+    (check "system-stats reports the facts count" (= 2 (getf s :facts-learned)))
+    (check "system-stats reports neurons and dendrites"
+           (and (> (getf s :neurons) 0) (> (getf s :dendrites) 0))))
+  (check "facts-learned persists across save / reload"
+         (let ((tmp "stats-temp.kb"))
+           (save-network tmp) (reset)
+           (prog1 (progn (load-network tmp) (= 2 *facts-learned*))
+             (ignore-errors (delete-file tmp)))))
+
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
 	  (if (zerop *tests-failed*) "ALL TESTS PASSED" "SOME TESTS FAILED"))

@@ -406,6 +406,7 @@ s-expression — you can peek at it.
 | Save / load a knowledge base | `(export-kb "f.kb")` / `(import-kb "f.kb")` |
 | Wipe all memory | `(reset)` |
 | Print the internal neuron tree | `(dump-dictionary)` |
+| See system stats (facts, neurons, …) | `(system-stats)` |
 
 Inputs and answers can be plain **sentence strings** — the system tokenizes them
 (lowercases, drops `.` `!` `?`) — or, if you prefer, lists of lowercase words. So
