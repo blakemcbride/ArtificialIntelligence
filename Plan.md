@@ -355,8 +355,9 @@ self-supervised learning: each sentence feeds the distributed-vector co-occurren
 (*unsupervised* similarity — read about a new thing and it clusters with its kin, no
 teacher), and simple declarative patterns also teach facts — "X is the Y of Z" → a
 relational fact ("Kigali is the capital of Rwanda" → answers "what is the capital of
-Rwanda"), "X is a Y" → membership, and "X was a ROLE" → "who was X" (so past-tense history
-works); questions are skipped.  Pattern extraction is deliberately light (regular sentences
+Rwanda"), "X is a Y" → membership, "X is the largest Y" → a superlative fact ("what is the
+largest planet" → Jupiter), and "X was a ROLE" → "who was X" (so past-tense history works);
+questions are skipped.  Pattern extraction is deliberately light (regular sentences
 only); turning arbitrary prose into facts is the open, hard problem (and heavy parsing drifts
 back toward the symbolic style).  But similarity from raw text is free and continual, exactly
 in the project's spirit.

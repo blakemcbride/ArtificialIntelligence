@@ -611,6 +611,8 @@
          (equal '("reykjavik") (ask "what is the capital of iceland")))
   (check "read-text-file: 'who was X' learned from prose (ada lovelace -> a mathematician)"
          (equal '("a" "mathematician") (ask "who was ada lovelace")))
+  (check "read-text: superlative fact (largest planet -> jupiter)"
+         (equal '("jupiter") (ask "what is the largest planet")))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

@@ -224,6 +224,12 @@
 
 (defun join-words (ws) (format nil "~{~a~^ ~}" ws))
 
+(defun superlative-p (w)
+  "Is W a superlative adjective (largest, tallest, best, most, ...)?  Used to read
+   'X is the largest Y' as 'what is the largest Y => X'."
+  (or (and (> (length w) 4) (string= "est" (subseq w (- (length w) 3))))   ; -est: largest, tallest
+      (member w '("most" "least" "best" "worst") :test #'string=)))
+
 (defun extract-fact (words)
   "If WORDS is a simple declarative sentence, learn a fact and return T.  Handles
    'X is the Y of Z' (relational) and 'X is/are Y' (membership/copula).  Skips questions."
@@ -251,6 +257,14 @@
 		 (learn (format nil "what is the ~a of ~a" (join-words y) (join-words z))
 			(join-words after))
 		 t)))
+	    ;; "X is the <superlative> Y"  ->  what is the <superlative> Y => X
+	    ((and (string= (first after) "the") (cdr after) (superlative-p (second after)))
+	     (learn (format nil "what is ~a" (join-words after)) (join-words before))
+	     t)
+	    ;; "the <superlative> Y is X"  ->  what is the <superlative> Y => X
+	    ((and (string= (first before) "the") (cdr before) (superlative-p (second before)))
+	     (learn (format nil "what is ~a" (join-words before)) (join-words after))
+	     t)
 	    ;; "X was a/an Y"  ->  who was X => a/an Y   (a person and their role)
 	    ((and (string= cop "was") (member (first after) '("a" "an") :test #'string=))
 	     (learn (format nil "who was ~a" (join-words before)) (join-words after))
