@@ -49,6 +49,7 @@
   "Training file `main' learns on first startup when there is no saved memory yet, so a
    fresh system already knows something.  Bind to NIL to start completely blank.")
 (declaim (ftype function train-from-file))   ; defined below; main calls it on first startup
+(declaim (ftype function read-text-file))    ; defined below; the .read command calls it
 
 (defun words-of (neurons)
   "The word strings of a create-line result, in order."
@@ -58,6 +59,62 @@
   "Is WORDS a lone `quit' or `exit'?"
   (and (consp words) (null (cdr words))
        (or (string= "quit" (car words)) (string= "exit" (car words)))))
+
+(defun print-help ()
+  "Print the teaching-loop instructions and the available loop commands."
+  (format t "~&Teaching loop -- type a sentence, then on the next line the correct~%")
+  (format t "response (or ~{~a~^/~} to confirm a correct guess).~%" *confirm-words*)
+  (format t "Commands start with a period and are typed alone on a line:~%")
+  (format t "  .help          show this help~%")
+  (format t "  .stats         show system statistics~%")
+  (format t "  .save FILE     save the knowledge base to FILE     (e.g. .save my.kb)~%")
+  (format t "  .load FILE     clear, then load the knowledge base from FILE~%")
+  (format t "  .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)~%")
+  (format t "  .quit          save and exit                       (also .exit)~%"))
+
+(defun parse-command (line)
+  "If raw input LINE is a leading-period command, return (values NAME ARG): NAME is the
+   lowercased command word (e.g. \"save\") and ARG the trimmed remainder, with case and any
+   embedded periods preserved (so filenames survive intact) -- ARG is \"\" when none was
+   given.  Returns NIL when LINE is not a command (so it is treated as a sentence)."
+  (let ((trimmed (string-left-trim '(#\space #\tab #\return #\linefeed) line)))
+    (when (and (plusp (length trimmed)) (char= #\. (char trimmed 0)))
+      (let* ((body (subseq trimmed 1))                       ; drop the leading period
+	     (sp   (position-if (lambda (c) (member c '(#\space #\tab #\return #\linefeed)))
+				body))
+	     (name (string-downcase (subseq body 0 (or sp (length body)))))
+	     (arg  (if sp
+		       (string-trim '(#\space #\tab #\return #\linefeed) (subseq body sp))
+		       "")))
+	;; tolerate a trailing sentence terminator on the argument (.save my.kb.)
+	(when (and (plusp (length arg)) (find (char arg (1- (length arg))) ".!?"))
+	  (setf arg (string-right-trim '(#\space #\tab #\return #\linefeed)
+				       (subseq arg 0 (1- (length arg))))))
+	(values name arg)))))
+
+(defun run-command (name arg)
+  "Execute a leading-period loop command.  Return :quit to stop the loop, else NIL."
+  (cond
+    ((or (string= name "quit") (string= name "exit")) :quit)
+    ((string= name "help")  (print-help)    nil)
+    ((string= name "stats") (system-stats)  nil)
+    ((string= name "save")
+     (if (plusp (length arg))
+	 (format t "  (saved knowledge base to ~a)~%" (save-network arg))
+	 (format t "  (.save needs a filename, e.g. .save my.kb)~%"))
+     nil)
+    ((string= name "load")
+     (cond ((zerop (length arg)) (format t "  (.load needs a filename)~%"))
+	   ((load-network arg)    (format t "  (loaded knowledge base from ~a)~%" arg))
+	   (t (format t "  (could not load ~a -- file not found; knowledge base unchanged)~%" arg)))
+     nil)
+    ((string= name "read")
+     (cond ((zerop (length arg)) (format t "  (.read needs a filename)~%"))
+	   ((probe-file arg)      (read-text-file arg))   ; prints its own sentence/fact counts
+	   (t (format t "  (could not read ~a -- file not found)~%" arg)))
+     nil)
+    (t (format t "  (unknown command .~a -- type .help for the command list)~%" name)
+       nil)))
 
 (defun confirm-p (words)
   "Is WORDS a single confirmation token (accept the last guess)?"
@@ -130,34 +187,44 @@
          (let ((n (train-from-file *starter-kb* :verbose nil)))
            (format t "~&(learned ~d facts; teach me more, or just ask)~%" n)))
         (t (reset)))
-  (format t "~&Teaching loop -- type a sentence, then on the next line the correct~%")
-  (format t "response (or ~{~a~^/~} to confirm a correct guess).  Stop with quit.~%~%"
-	  *confirm-words*)
+  (print-help)
+  (terpri)
   (loop
      (format t "~&input> ")
      (force-output)
-     (let ((in (words-of (create-line))))
-       (when (or (null in) (quit-line-p in))
-	 (return))
-       (let* ((resolved (resolve-followup in))   ; conversation memory: fold in the previous turn
-	      (guess (or (infer-answer resolved) (respond resolved))))
-	 (remember-turn resolved)
-	 (format t "  guess: ~a~%"
-		 (if guess (format nil "~{~a~^ ~}" guess) "(I don't know)"))
-	 (format t "teach> ")
-	 (force-output)
-	 (let ((teacher (words-of (create-line))))
-	   (cond ((null teacher)
-		  (return))
-		 ((confirm-p teacher)
-		  (cond (guess
-			 (learn resolved guess)
-			 (format t "  (reinforced)~%"))
-			(t
-			 (format t "  (nothing to confirm -- give the answer)~%"))))
-		 (t
-		  (learn resolved teacher)
-		  (format t "  (learned)~%")))))))
+     (let ((line (read-line nil nil)))                 ; raw line: keeps case for filenames
+       (when (null line) (return))                     ; end of input
+       (multiple-value-bind (cmd arg) (parse-command line)
+	 (cond
+	   (cmd                                          ; a .command (help/stats/save/load/read/quit)
+	    (when (eq :quit (run-command cmd arg)) (return)))
+	   (t
+	    (let ((in (tokenize (string-downcase line))))
+	      (cond
+		((null in) nil)                          ; blank line -- just prompt again
+		((quit-line-p in) (return))              ; bare quit/exit still stops the loop
+		(t
+		 (let* ((resolved (resolve-followup in)) ; conversation memory: fold in previous turn
+			(guess (or (infer-answer resolved) (respond resolved))))
+		   (remember-turn resolved)
+		   (format t "  guess: ~a~%"
+			   (if guess (format nil "~{~a~^ ~}" guess) "(I don't know)"))
+		   (format t "teach> ")
+		   (force-output)
+		   (let ((tline (read-line nil nil)))
+		     (when (null tline) (return))        ; end of input
+		     (let ((teacher (tokenize (string-downcase tline))))
+		       (cond
+			 ((null teacher) nil)            ; blank teacher line -- learn nothing
+			 ((confirm-p teacher)
+			  (cond (guess
+				 (learn resolved guess)
+				 (format t "  (reinforced)~%"))
+				(t
+				 (format t "  (nothing to confirm -- give the answer)~%"))))
+			 (t
+			  (learn resolved teacher)
+			  (format t "  (learned)~%"))))))))))))))
   (save-network)
   (format t "~&(memory saved to ~a)~%" *save-file*)
   (terpri)

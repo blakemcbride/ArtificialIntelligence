@@ -25,16 +25,46 @@
    The non-stdin counterpart to create-line, used by inference (processing:respond)."
   (mapcar #'intern-word words))
 
+(defun isspace (c)
+  (or (eql c #\space)
+      (eql c #\tab)
+      (eql c #\return)
+      (eql c #\linefeed)))
+
+(defun eol (c)
+  "Is C one of the sentence terminators (. ! ?), regardless of context?"
+  (or (eql c #\.)
+      (eql c #\!)
+      (eql c #\?)))
+
+(defun terminator-p (line pos)
+  "Does the character at POS in LINE end a sentence?  ! and ? always do; a period does
+   only at the end of the line or when followed by whitespace.  This way an embedded
+   period -- as in a filename like file.kb, or a decimal like 3.14 -- stays inside its
+   word instead of splitting it."
+  (let ((c (char line pos)))
+    (cond ((or (eql c #\!) (eql c #\?)) t)
+	  ((eql c #\.)
+	   (or (>= (1+ pos) (length line))            ; period at end of line
+	       (isspace (char line (1+ pos)))))       ; period before a space
+	  (t nil))))
+
+(defun string-eol (s)
+  "Is S a lone terminator token (a single . ! or ?) -- i.e. the end of a sentence?"
+  (and (eql 1 (length s))
+       (eol (char s 0))))
+
 (defun tokenize (string)
   "Split a sentence STRING into lowercase word strings, the way create-line tokenizes a
-   line of input: whitespace and the terminators . ! ? are separators (the terminators
-   themselves are dropped).  E.g. \"Do horses walk?\" -> (\"do\" \"horses\" \"walk\")."
+   line of input: whitespace and the sentence terminators are separators (and are dropped).
+   A period only separates at end-of-string or before whitespace, so embedded periods are
+   kept (\"file.kb\" stays one token).  E.g. \"Do horses walk?\" -> (\"do\" \"horses\" \"walk\")."
   (let ((res '()) (start nil) (n (length string)))
-    (flet ((boundary-p (c)
-	     (or (eql c #\space) (eql c #\tab) (eql c #\return) (eql c #\linefeed)
-		 (eql c #\.) (eql c #\!) (eql c #\?))))
+    (flet ((boundary-at (i)
+	     (or (isspace (char string i))
+		 (terminator-p string i))))
       (dotimes (i n)
-	(if (boundary-p (char string i))
+	(if (boundary-at i)
 	    (when start
 	      (push (string-downcase (subseq string start i)) res)
 	      (setf start nil))
@@ -47,46 +77,35 @@
    (or nil) through unchanged.  This lets the public API accept either form."
   (if (stringp x) (tokenize x) x))
 
-(defun isspace (c)
-  (or (eql c #\space)
-      (eql c #\tab)
-      (eql c #\return)
-      (eql c #\linefeed)))
-
-(defun eol (c)
-  (or (eql c #\.)
-      (eql c #\!)
-      (eql c #\?)))
-
-(defun string-eol (s)
-  (and (eql 1 (length s))
-       (eol (char s 0))))
-
 (defun getword ()
-  "Get and return a single word from the input stream as a string, or NIL at end of input"
-					; if no words, read a non-blank line
+  "Get and return a single word from the input stream as a string, or NIL at end of input.
+   A sentence terminator comes back as its own one-character word; a period that is not at
+   end-of-line and not followed by a space stays inside the surrounding word (see
+   terminator-p), so e.g. \"file.kb\" reads as one word."
+					; if the buffer is exhausted, read the next non-blank line
   (loop while (>= *current-position* (length *input-line*)) do
        (setq *current-position* 0)
        (setq *input-line* (string-downcase (or (read-line nil nil)
-						(return-from getword nil))))
+					       (return-from getword nil))))
        (loop while (and (< *current-position* (length *input-line*))
 			(isspace (char *input-line* *current-position*))) do
 	    (incf *current-position*)))
-					; get all non-space characters
-  (let* ((c (char *input-line* *current-position*))
-	 (res (list c)))
-    (incf *current-position*)
-    (cond ((not (eol c))
-	   (loop while (and (< *current-position* (length *input-line*))
-			    (not (isspace (char *input-line* *current-position*)))
-			    (not (eol (char *input-line* *current-position*)))) do
-		(add res (char *input-line* *current-position*))
-		(incf *current-position*))))
+					; *current-position* now sits on a non-space character
+  (let ((start *current-position*))
+    (cond
+      ((terminator-p *input-line* *current-position*)   ; a lone terminator token
+       (incf *current-position*))
+      (t					        ; gather to the next space / terminator
+       (incf *current-position*)
+       (loop while (and (< *current-position* (length *input-line*))
+			(not (isspace (char *input-line* *current-position*)))
+			(not (terminator-p *input-line* *current-position*))) do
+	    (incf *current-position*))))
+    (prog1 (subseq *input-line* start *current-position*)
 					; skip remainder of spaces for next time
-    (loop while (and (< *current-position* (length *input-line*))
-		     (isspace (char *input-line* *current-position*))) do
-	 (incf *current-position*))
-    (coerce (nreverse res) 'string)))
+      (loop while (and (< *current-position* (length *input-line*))
+		       (isspace (char *input-line* *current-position*))) do
+	   (incf *current-position*)))))
 
 (defun create-line ()
   "Returns a list of named neurons"

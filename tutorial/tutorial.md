@@ -73,7 +73,14 @@ what it would answer, then reads your correction (or a confirmation) and learns 
 ```text
 * (main)
 Teaching loop -- type a sentence, then on the next line the correct
-response (or yes/y/right/correct/ok to confirm a correct guess).  Stop with quit.
+response (or yes/y/right/correct/ok to confirm a correct guess).
+Commands start with a period and are typed alone on a line:
+  .help          show this help
+  .stats         show system statistics
+  .save FILE     save the knowledge base to FILE     (e.g. .save my.kb)
+  .load FILE     clear, then load the knowledge base from FILE
+  .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)
+  .quit          save and exit                       (also .exit)
 
 input> hello.
   guess: (I don't know)
@@ -85,19 +92,23 @@ input> hello.
 teach> yes.
   (reinforced)
 
-input> quit.
+input> .quit
 (memory saved to ai-network.kb)
 ```
 
 Things to know:
 
-- **Every line must end with `.`, `!`, or `?`** — including `quit.` / `exit.`. Input is
-  lowercased automatically.
+- A sentence ends at `.`, `!`, or `?`. A period only ends the sentence at the end of the
+  line or before a space, so an **embedded period is fine** — `file.kb` and `3.14` stay
+  whole. In the loop the trailing terminator is optional. Input is lowercased automatically.
+- **Commands begin with a period** and are typed alone on a line: `.help`, `.stats`,
+  `.save FILE`, `.load FILE`, `.read FILE`, and `.quit` / `.exit`. Because a command line
+  is read as-is, a filename keeps its capitals and dots (`.save MyKB.kb`).
 - The first turn it has no idea, so it says **"(I don't know)"**; you supply the answer and
   it **learns**. The second time you say `hello.` it **recalls** "hi there"; typing a
   confirmation word (`yes`, `ok`, …) **reinforces** that pathway instead of retyping the
   answer.
-- On `quit.` it **saves everything** to `ai-network.kb` in the current directory and
+- On `.quit` it **saves everything** to `ai-network.kb` in the current directory and
   prints its internal neuron tree. Next time you run `(main)` it **loads that file back**,
   so the system remembers across sessions.
 
@@ -240,7 +251,7 @@ input> say car.
 teach> yes.
   (reinforced)
 
-input> quit.
+input> .quit
 ```
 
 By the `say bird` turn the system answers *before* you teach it, and `say car` works for a
@@ -407,9 +418,12 @@ s-expression — you can peek at it.
 | Wipe all memory | `(reset)` |
 | Print the internal neuron tree | `(dump-dictionary)` |
 | See system stats (facts, neurons, …) | `(system-stats)` |
+| Inside `(main)`: save / load / read a file | `.save f.kb` / `.load f.kb` / `.read prose.txt` |
+| Inside `(main)`: stats / help / quit | `.stats` / `.help` / `.quit` |
 
 Inputs and answers can be plain **sentence strings** — the system tokenizes them
-(lowercases, drops `.` `!` `?`) — or, if you prefer, lists of lowercase words. So
+(lowercases, drops a terminal `.` `!` `?`, but keeps an embedded period like in `file.kb`) —
+or, if you prefer, lists of lowercase words. So
 `(infer-p "Do horses run?" "yes")` and `(infer-p '("do" "horses" "run") '("yes"))` are
 equivalent.
 

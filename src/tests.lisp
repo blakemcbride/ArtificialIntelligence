@@ -292,6 +292,32 @@
              (and (search "(reinforced)" out) t)))
     (ignore-errors (delete-file *save-file*)))
 
+  ;; Leading-period commands: teach a fact, .save to a file, then in a fresh session
+  ;; .load it back and confirm the fact survived.  Filenames keep their case/dots.
+  (let ((*save-file* "phase5-cmd.kb") (*starter-kb* nil)
+        (kb "Phase5-Cmd-Out.kb"))
+    (ignore-errors (delete-file *save-file*))
+    (ignore-errors (delete-file kb))
+    (let ((out (with-output-to-string (*standard-output*)
+                 (with-input-from-string
+                     (*standard-input*
+                      (format nil "say hi.~%hi there.~%.stats~%.save ~a~%.quit~%" kb))
+                   (main)))))
+      (check ".stats command prints stats inside the loop"
+             (and (search "--- system stats ---" out) t))
+      (check ".save command writes the knowledge base (case-preserved filename)"
+             (and (search "saved knowledge base to" out) (probe-file kb) t)))
+    (let ((out (with-output-to-string (*standard-output*)
+                 (with-input-from-string
+                     (*standard-input*
+                      (format nil ".load ~a~%say hi.~%yes.~%.quit~%" kb))
+                   (main)))))
+      (check ".load command restores a saved knowledge base"
+             (and (search "loaded knowledge base from" out)
+                  (search "guess: hi there" out) t)))
+    (ignore-errors (delete-file *save-file*))
+    (ignore-errors (delete-file kb)))
+
   ;; ===================== Phase 6 -- Persistence =====================
   (format t "~%Phase 6 tests~%")
   (reset)
@@ -451,6 +477,12 @@
   (format t "~%String interface tests~%")
   (check "tokenize lowercases and strips terminal punctuation"
          (equal '("do" "cats" "purr") (tokenize "Do cats purr?")))
+  (check "tokenize keeps an embedded period (filename stays one token)"
+         (equal '("file.kb") (tokenize "file.kb")))
+  (check "tokenize keeps a decimal but drops the terminal period"
+         (equal '("the" "value" "is" "3.14") (tokenize "The value is 3.14.")))
+  (check "tokenize splits on a period followed by a space"
+         (equal '("save" "my.kb" "now") (tokenize "save my.kb. now")))
   (reset)
   (train-from-file "training-set.txt" :verbose nil)
   (check "infer-p accepts a sentence string (horse generalizes in)"
