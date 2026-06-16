@@ -18,7 +18,7 @@
 ;;; passes (create all neurons, then wire links) through an id -> neuron map.  ids are
 ;;; debug-only, so reloaded neurons get fresh ids; the id MAP is what preserves sharing.
 
-(defparameter *save-file* "ai-network.kb"
+(defparameter *save-file* "auto-save.kb"
   "Default file the teaching loop loads on startup and saves on exit.")
 
 (defun dendrite->list (d)
