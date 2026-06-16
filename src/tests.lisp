@@ -765,6 +765,19 @@
                    (string-downcase (join-words (respond "tell me about france")))))
     (ignore-errors (delete-file tmp)))
 
+  ;; ===================== Streaming reader (large-file safe) =====================
+  (format t "~%Streaming reader tests~%")
+  (reset)
+  (let ((tmp "stream-temp.txt"))
+    (with-open-file (s tmp :direction :output :if-exists :supersede :if-does-not-exist :create)
+      ;; a sentence that SPANS a newline -- the chunked reader treats newlines as whitespace
+      ;; and splits only on . ! ?, so the file is never loaded whole.
+      (format s "Reykjavik is the~%capital of Iceland.~%Quito is a city.~%"))
+    (check "read-text-file streams and splits sentences across newlines"
+           (progn (read-text-file tmp :verbose nil)
+                  (equal '("reykjavik") (ask "what is the capital of iceland"))))
+    (ignore-errors (delete-file tmp)))
+
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")
   (reset)

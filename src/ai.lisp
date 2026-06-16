@@ -306,10 +306,9 @@
   '("what" "who" "where" "when" "why" "how" "is" "are" "do" "does" "can" "will" "did")
   "Leading words that mark a sentence as a question, so it isn't mistaken for a stated fact.")
 
-(defun slurp-file (path)
-  (with-open-file (s path :direction :input)
-    (let ((str (make-string (file-length s))))
-      (subseq str 0 (read-sequence str s)))))
+;; (slurp-file removed: files are now streamed in bounded-memory chunks -- see stream-chunks /
+;;  read-text-file below.  Loading a whole 100 GB+ corpus into a string is exactly what we avoid;
+;;  it was also wrong for UTF-8, where file-length counts bytes, not characters.)
 
 (defun split-sentences (text)
   "Split TEXT into trimmed sentence strings on . ! ? boundaries."
@@ -372,32 +371,79 @@
 	    (t (learn (format nil "~a ~a ~a" cop (join-words before) (join-words after)) "yes")
 	       t)))))))
 
-(defun read-text (text &key (extract t) (verbose t))
-  "Learn from raw TEXT (one or more sentences).  Each sentence feeds the distributed-vector
-   co-occurrence (unsupervised similarity); declarative sentences also teach a fact when
-   EXTRACT is true.  Returns (values sentences-read facts-learned)."
-  (let ((sentences (split-sentences text)) (facts 0))
-    ;; pass 1: learn the relation model (Phase 9) from every sentence, so extraction in
-    ;; pass 2 is informed by the whole batch (connectors / heads discovered, not hardcoded).
-    (dolist (s sentences)
-      (let ((words (tokenize s))) (when words (observe words))))
-    ;; pass 2: similarity, transitions, hardcoded triples, supervised facts, + LEARNED facts
-    (dolist (s sentences)
-      (let ((words (tokenize s)))
-	(when words
-	  (note-cooccurrence words nil)                       ; similarity, always (no teacher)
-	  (note-sequence words)                               ; generation: transition model (Phase 8)
-	  (note-facts words)                                  ; generation: declarative triples (hardcoded)
-	  (multiple-value-bind (subj conn cat cls) (relation-of words) ; learned membership (Phase 9)
-	    (declare (ignore conn))
-	    (when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat)))
-	  (when (and extract (extract-fact words)) (incf facts)))))
-    (when verbose (format t "~&read ~d sentences, learned ~d facts~%" (length sentences) facts))
-    (values (length sentences) facts)))
+(defparameter *read-max-mb* nil
+  "If non-NIL, .read / read-text-file / load-knowledge stop after about this many megabytes.
+   The file ALWAYS streams in bounded-memory chunks; this caps how much is INGESTED, because
+   the learned model (vocabulary, co-occurrence, ...) still grows with what is read.  NIL =
+   read the whole file.")
+(defparameter *read-chunk* 262144 "Characters read per chunk while streaming a file.")
+(defparameter *read-flush* 4194304 "Force-process a delimiter-free buffer once it exceeds this.")
 
-(defun read-text-file (path &rest args)
-  "Read raw text from PATH and learn from it (see read-text)."
-  (apply #'read-text (slurp-file path) args))
+(defun split-lines (text)
+  "Split TEXT on newlines into a list of lines (delimiters dropped)."
+  (let (res (start 0) (n (length text)))
+    (dotimes (i n) (when (char= (char text i) #\Newline)
+		     (push (subseq text start i) res) (setf start (1+ i))))
+    (push (subseq text start n) res)
+    (nreverse res)))
+
+(defun process-sentence (words &optional (extract t))
+  "Learn from one already-tokenized sentence in a single online pass.  Returns 1 if a fact
+   was extracted, else 0."
+  (when words
+    (observe words)                  ; relations: online connector/head discovery (Phase 9)
+    (note-cooccurrence words nil)    ; distributed-vector similarity
+    (note-sequence words)            ; generation transition model (Phase 8)
+    (note-facts words)               ; generation declarative triples (hardcoded)
+    (multiple-value-bind (subj conn cat cls) (relation-of words)
+      (declare (ignore conn))
+      (when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat))))
+  (if (and words extract (extract-fact words)) 1 0))
+
+(defun read-text (text &key (extract t) (verbose t))
+  "Learn from raw TEXT (one or more sentences) in a single online pass.  Returns (values
+   sentences-read facts-learned)."
+  (let ((ns 0) (nf 0))
+    (dolist (s (split-sentences text))
+      (let ((words (tokenize s))) (when words (incf ns) (incf nf (process-sentence words extract)))))
+    (when verbose (format t "~&read ~:d sentences, learned ~:d facts~%" ns nf))
+    (values ns nf)))
+
+(defun stream-chunks (path drain &key (max-bytes nil) (verbose t))
+  "Stream PATH in bounded-memory chunks (the whole file is never held in memory; UTF-8 safe).
+   DRAIN is called as (drain buffer) during streaming -- it processes the complete units in
+   BUFFER and returns the unprocessed tail -- and once as (drain tail t) at end of file."
+  (with-open-file (s path :direction :input)
+    (let ((cbuf (make-string *read-chunk*)) (pending "") (bytes 0) (prog 100000000))
+      (loop
+	(let ((n (read-sequence cbuf s)))
+	  (when (zerop n) (return))
+	  (incf bytes n)
+	  (setf pending (funcall drain (concatenate 'string pending (subseq cbuf 0 n))))
+	  (when (and verbose (>= bytes prog))
+	    (format t "~&  ... ~:d MB read~%" (round bytes 1000000)) (incf prog 100000000))
+	  (when (and max-bytes (>= bytes max-bytes)) (return))))
+      (funcall drain pending t))))
+
+(defun read-text-file (path &key (extract t) (verbose t) (max-mb *read-max-mb*))
+  "Stream raw text from PATH (bounded memory) and learn from it as prose.  Splits on sentence
+   terminators across the whole stream (newlines are whitespace), so it never loads the file
+   in full -- safe for very large corpora.  Returns (values sentences facts)."
+  (let ((ns 0) (nf 0))
+    (flet ((proc (text)
+	     (dolist (s (split-sentences text))
+	       (let ((w (tokenize s))) (when w (incf ns) (incf nf (process-sentence w extract)))))))
+      (stream-chunks
+       path
+       (lambda (buf &optional final)
+	 (if final (progn (proc buf) "")
+	     (let ((p (position-if (lambda (c) (member c '(#\. #\! #\?))) buf :from-end t)))
+	       (cond (p (proc (subseq buf 0 (1+ p))) (subseq buf (1+ p)))
+		     ((> (length buf) *read-flush*) (proc buf) "")  ; no terminator: force-flush
+		     (t buf)))))
+       :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose))
+    (when verbose (format t "~&read ~:d sentences, learned ~:d facts from ~a~%" ns nf path))
+    (values ns nf)))
 
 ;;; --- Unified loader: one front door, two underlying modes ----------------------
 ;;; The system learns two ways -- supervised `input => answer' pairs (learn) and raw prose
@@ -407,28 +453,35 @@
 ;;; line to the right mode, so one file may freely mix both.  train-from-file / read-text
 ;;; are unchanged underneath -- this is just the smart front door.
 
-(defun load-knowledge (path &key (verbose t) (separator "=>"))
-  "Load a knowledge file, auto-routing each line:
+(defun load-knowledge (path &key (verbose t) (separator "=>") (max-mb *read-max-mb*))
+  "Stream a knowledge file (bounded memory -- read in chunks, never loaded whole), auto-routing
+   each line:
      * a line containing SEPARATOR (default \"=>\") is a supervised pair  -> learn;
      * any other non-comment line is prose                                -> read-text;
      * blank lines and lines beginning with # or ; are ignored.
-   One file may mix both formats.  Returns (values pairs-learned prose-sentences prose-facts)."
+   One file may mix both formats.  Bind *read-max-mb* (or pass :max-mb) to cap a huge corpus.
+   Returns (values pairs-learned prose-sentences prose-facts)."
   (let ((pairs 0) (psent 0) (pfacts 0))
-    (with-open-file (s path :direction :input)
-      (loop for line = (read-line s nil nil)
-	    while line
-	    do (let ((trimmed (string-left-trim '(#\Space #\Tab) line)))
-		 (cond
-		   ((or (zerop (length trimmed)) (member (char trimmed 0) '(#\# #\;)))
-		    nil)                                   ; comment / blank
-		   ((find-substring separator line)        ; supervised input => answer
-		    (let* ((sep (find-substring separator line))
-			   (in  (tokenize (subseq line 0 sep)))
-			   (out (tokenize (subseq line (+ sep (length separator))))))
-		      (when (and in out) (learn in out) (incf pairs))))
-		   (t                                      ; prose
-		    (multiple-value-bind (n f) (read-text trimmed :verbose nil)
+    (flet ((route (line)
+	     (let ((trimmed (string-left-trim '(#\Space #\Tab #\Return) line)))
+	       (cond
+		 ((or (zerop (length trimmed)) (member (char trimmed 0) '(#\# #\;))) nil)
+		 ((find-substring separator line)        ; supervised input => answer
+		  (let* ((sep (find-substring separator line))
+			 (in  (tokenize (subseq line 0 sep)))
+			 (out (tokenize (subseq line (+ sep (length separator))))))
+		    (when (and in out) (learn in out) (incf pairs))))
+		 (t (multiple-value-bind (n f) (read-text trimmed :verbose nil)
 		      (incf psent n) (incf pfacts f)))))))
+      (stream-chunks
+       path
+       (lambda (buf &optional final)
+	 (if final (progn (when (plusp (length buf)) (route buf)) "")
+	     (let ((p (position #\Newline buf :from-end t)))
+	       (cond (p (dolist (ln (split-lines (subseq buf 0 p))) (route ln)) (subseq buf (1+ p)))
+		     ((> (length buf) *read-flush*) (route buf) "")  ; pathological long line
+		     (t buf)))))
+       :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose))
     (when verbose
       (format t "~&loaded ~a: ~:d supervised pair~:p, ~:d prose sentence~:p (~:d fact~:p)~%"
 	      path pairs psent pfacts))
