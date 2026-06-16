@@ -29,21 +29,13 @@ From a shell, in the `src/` directory, start SBCL and paste these:
 ;; 1. load the system (run this from inside src/)
 (load "load.lisp")
 
-;; 2. import the starter knowledge base (105 facts)
-(train-from-file "training-set.txt")
-
-;; 3. ask something it was taught
-(infer-p "Do dogs walk on their legs?" "yes")    ; => T
-
-;; 4. ask about a creature it was NEVER taught to walk -- it generalizes
-(infer-p "Do horses walk on their legs?" "yes")  ; => T
-
-;; 5. ask about a legless animal -- it is excluded
-(infer-p "Do snakes walk on their legs?" "yes")  ; => NIL
+;; 2. start the interactive teaching loop
+(main)
 ```
 
-If those five lines behaved as shown, everything works. The rest of this tutorial explains
-each piece.
+On its first start `(main)` learns the broad starter knowledge base automatically, so it
+can answer right away — type a sentence and it responds, or teach it something new. The
+rest of this tutorial explains each piece.
 
 ---
 
@@ -77,10 +69,12 @@ response (or yes/y/right/correct/ok to confirm a correct guess).
 Commands start with a period and are typed alone on a line:
   .help          show this help
   .stats         show system statistics
-  .save FILE     save the knowledge base to FILE     (e.g. .save my.kb)
-  .load FILE     clear, then load the knowledge base from FILE
+  .list [DIR]    list the .kb files in DIR (default: current directory)
+  .save FILE     save to FILE and make it the active file
+  .load FILE     clear, then load FILE and make it the active file
   .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)
   .quit          save and exit                       (also .exit)
+The active file is auto-save.kb; it is loaded on start and auto-saved on exit.
 
 input> hello.
   guess: (I don't know)
@@ -93,7 +87,7 @@ teach> yes.
   (reinforced)
 
 input> .quit
-(memory saved to ai-network.kb)
+(memory saved to auto-save.kb)
 ```
 
 Things to know:
@@ -102,15 +96,15 @@ Things to know:
   line or before a space, so an **embedded period is fine** — `file.kb` and `3.14` stay
   whole. In the loop the trailing terminator is optional. Input is lowercased automatically.
 - **Commands begin with a period** and are typed alone on a line: `.help`, `.stats`,
-  `.save FILE`, `.load FILE`, `.read FILE`, and `.quit` / `.exit`. Because a command line
-  is read as-is, a filename keeps its capitals and dots (`.save MyKB.kb`).
+  `.list [DIR]`, `.save FILE`, `.load FILE`, `.read FILE`, and `.quit` / `.exit`. Because a
+  command line is read as-is, a filename keeps its capitals and dots (`.save MyKB.kb`).
 - The first turn it has no idea, so it says **"(I don't know)"**; you supply the answer and
   it **learns**. The second time you say `hello.` it **recalls** "hi there"; typing a
   confirmation word (`yes`, `ok`, …) **reinforces** that pathway instead of retyping the
   answer.
-- On `.quit` it **saves everything** to `ai-network.kb` in the current directory and
-  prints its internal neuron tree. Next time you run `(main)` it **loads that file back**,
-  so the system remembers across sessions.
+- There is always an **active file** (it starts as `auto-save.kb`): `(main)` loads it on
+  start and saves to it on `.quit`. **`.save FILE` and `.load FILE` change the active file**,
+  so once you `.load mywork.kb`, exiting writes back to `mywork.kb` — not to `auto-save.kb`.
 
 You can call `(main)` again and it will pick up where it left off.
 
@@ -394,10 +388,12 @@ graph — round-trips through a single file.
 (import-kb "my-kb.kb")    ; load it back; => T  (NIL if the file is missing)
 ```
 
-`(main)` does this automatically for the default file `ai-network.kb` (loads on entry,
-saves on exit), so an interactive session persists on its own. Use `export-kb`/`import-kb`
-when you want to manage named knowledge bases yourself. The file is a human-readable
-s-expression — you can peek at it.
+`(main)` does this automatically for its **active file** — `auto-save.kb` by default
+(loads on entry, saves on exit) — so an interactive session persists on its own. Inside the
+loop, `.save FILE` and `.load FILE` switch the active file, so you can keep several named
+knowledge bases and pick one up where you left off; `.load mywork.kb` then `.quit` writes
+back to `mywork.kb`. Use `export-kb`/`import-kb` to do the same from code. The file is a
+human-readable s-expression — you can peek at it.
 
 ---
 
@@ -419,6 +415,7 @@ s-expression — you can peek at it.
 | Print the internal neuron tree | `(dump-dictionary)` |
 | See system stats (facts, neurons, …) | `(system-stats)` |
 | Inside `(main)`: save / load / read a file | `.save f.kb` / `.load f.kb` / `.read prose.txt` |
+| Inside `(main)`: list saved knowledge bases | `.list` / `.list DIR` |
 | Inside `(main)`: stats / help / quit | `.stats` / `.help` / `.quit` |
 
 Inputs and answers can be plain **sentence strings** — the system tokenizes them
@@ -433,7 +430,7 @@ equivalent.
 
 These are special variables you can `setf`/`let`-bind to change behavior (defaults shown):
 
-- `*save-file*` (`"ai-network.kb"`) — the file `(main)` auto-loads/saves.
+- `*save-file*` (`"auto-save.kb"`) — the file `(main)` auto-loads/saves.
 - `*concept-fraction*` (`0.15`) — how close to the taught members a new word must be to
   count as a category member. Raise it to be stricter (fewer things generalize in), lower
   it to be looser.
@@ -458,7 +455,7 @@ From `src/`:
 make test
 ```
 
-It runs ~100 assertions under SBCL covering every component (input structure, output
+It runs ~160 assertions under SBCL covering every component (input structure, output
 generation, associations, inference, reinforcement/decay, the teaching loop, persistence,
 and concept-graph generalization). A green run means the whole system is healthy.
 
