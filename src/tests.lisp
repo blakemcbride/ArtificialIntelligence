@@ -22,6 +22,7 @@
 (load "vectors.lisp")
 (load "operations.lisp")
 (load "generation.lisp")
+(load "induction.lisp")
 (load "relations.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
@@ -788,6 +789,21 @@
            (prog1 (and (load-network tmp)
                        (member "is a" (membership-connectors) :test #'string=))
              (ignore-errors (delete-file tmp)))))
+
+  ;; ===================== Phase 10 -- In-context learning (induction head) ==============
+  (format t "~%Phase 10 (induction / in-context learning) tests~%")
+  (check "induction: complete a repeated motif (a b c a b c a -> b)"
+         (string= "b" (complete '("a" "b" "c" "a" "b" "c" "a"))))
+  (check "induction: continue a length-2 motif"
+         (equal '("y" "x" "y" "x") (continue-sequence '("x" "y" "x" "y" "x") 4)))
+  (check "induction: novel tokens work (structural, not memorized)"
+         (string= "wug" (complete '("fip" "wug" "fip" "wug" "fip"))))
+  (check "induction-request-p detects a continue request"
+         (and (induction-request-p '("continue" "red" "green" "red")) t))
+  (check "induction-request-p ignores a normal question"
+         (null (induction-request-p '("do" "cats" "purr"))))
+  (check "respond owns a continue request (in-context continuation)"
+         (string= "green" (first (respond "continue red green red green red"))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

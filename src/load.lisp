@@ -9,8 +9,8 @@
 
 (defparameter *system-files*
   '("data-structures" "line-input" "input" "output"
-    "concepts" "attention" "vectors" "operations" "generation" "processing" "persist"
-    "relations" "ai")
+    "concepts" "attention" "vectors" "operations" "generation" "induction" "processing"
+    "persist" "relations" "ai")
   "The system's source files, in load (dependency) order.")
 
 (defun load-system ()

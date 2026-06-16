@@ -38,6 +38,8 @@
 
 (require "generation")
 (use-package "generation")
+(require "induction")
+(use-package "induction")
 (require "relations")
 (use-package "relations")
 (require "processing")

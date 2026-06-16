@@ -36,6 +36,8 @@
 (use-package "vectors")      ; note-cooccurrence (distributed concept vectors, similarity by geometry)
 (require "generation")
 (use-package "generation")   ; respond-generation / note-sequence / note-fact-from-qa (Phase 8)
+(require "induction")
+(use-package "induction")    ; respond-induction / induction-request-p (in-context learning)
 
 ;;; The Processing component (Plan.md) bridges the input and output networks.  After
 ;;; an input sentence is built, build-structure returns a set of "meaning" neurons
@@ -132,10 +134,15 @@
    nothing is recalled, a learned template may compose one.  Secondary values are the
    winning root and its activation.  No weights change here."
   (let ((input-words (as-words input)))
-    (if (generation-request-p input-words)
-	;; A recognized generation request (tell me about X / why ...) is OWNED by generation:
-	;; return its answer or NIL ("I don't know") -- never fall through to brittle recall.
-	(values (respond-generation input-words) nil 0.0)
+    (cond
+      ;; A recognized generation request (tell me about X / why ...) is OWNED by generation:
+      ;; return its answer or NIL ("I don't know") -- never fall through to brittle recall.
+      ((generation-request-p input-words)
+       (values (respond-generation input-words) nil 0.0))
+      ;; A `continue <sequence>' request is owned by the induction head (in-context learning).
+      ((induction-request-p input-words)
+       (values (respond-induction input-words) nil 0.0))
+      (t
 	(let ((copied (copy-response input-words))         ; 1. attention copy head (say X -> X)
 	      (op (run-operation input-words)))            ; 0. learned operation over knowledge
 	  (cond
@@ -148,7 +155,7 @@
 			     (winner  (select-winner (spread-activation endings)))) ; 3. direct recall
 			(if winner
 			    (values (produce-output winner) winner (neuron-current-value winner))
-			    (values nil nil 0.0))))))))))))
+			    (values nil nil 0.0)))))))))))))
 
 ;;; --- Reinforcement & decay (Phase 4): the continual-learning dynamics ----------
 ;;;
