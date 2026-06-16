@@ -7,3 +7,7 @@
 # saved/exported knowledge bases and runtime memory files (e.g. ai-network.kb)
 *.kb
 
+# LaTeX build artifacts (keep the .tex and .pdf)
+*.aux
+*.log
+
