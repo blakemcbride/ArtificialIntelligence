@@ -668,7 +668,30 @@ feeds it (`relations:observe`) and emits learned membership facts into the gener
   facts the learned layer doesn't), so the hardcoded patterns are kept as the floor while
   the learned layer takes over and extends coverage as more is read.
 
-### Phase 10 — Evaluation & tooling
+### Phase 10 — In-context learning via an induction head  ✅ done
+The defining trick of modern LLMs is **in-context learning**: shown a pattern in the prompt,
+continue it — with no weight update. Interpretability traced this to the **induction head**,
+a *two-layer* attention circuit, and `induction.lisp` realizes it with Hebbian fast weights
+(no backprop):
+- **layer 1 (previous-token head)** — positional attention copies each position's predecessor;
+- a **cleanup nonlinearity** between layers (decode → re-encode);
+- **layer 2 (induction head)** — content attention keyed by predecessor, returning the token
+  that *followed* the query token's earlier occurrence ("… A B … A" → "B").
+Both layers are outer-product associative memories; tokens/positions are random codes. The
+circuit is built **fresh from the prompt each call** — purely in-context, nothing persisted.
+`complete` predicts the next token, `continue-sequence` extends autoregressively, and
+`respond` owns a `continue <sequence>` request. Depth is essential: layer 2's keys *are*
+layer 1's outputs, so a single layer cannot do it.
+
+- **Done:** ✓ `induction.lisp` (package `induction`), wired into `respond`; PoCs in
+  `attention-stack-experiment.lisp` (multi-hop stacking) and `induction-head-experiment.lisp`
+  (in-context learning, with the naive-vs-clean nonlinearity comparison). `(respond "continue
+  red green red green red")` → `(green red green red green red)`; works on novel tokens
+  (structural, not memorized). 6 new tests; suite now **187**, green on SBCL. Open follow-on:
+  the layer *roles* are hand-wired — *learning* the per-layer weights with a local rule (so
+  the network discovers its own heads) is Phase 11+.
+
+### Phase 11 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network
       growth, weight distribution, prune counts. Extend `dump-dictionary` to show
       association weights, roots, and thresholds.
