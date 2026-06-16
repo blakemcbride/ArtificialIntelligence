@@ -21,6 +21,7 @@
 (load "attention.lisp")
 (load "vectors.lisp")
 (load "operations.lisp")
+(load "generation.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
 (load "ai.lisp")   ; loaded last; its use-package forms bring every component's
@@ -692,6 +693,54 @@
          (let ((tmp "stats-temp.kb"))
            (save-network tmp) (reset)
            (prog1 (progn (load-network tmp) (= 2 *facts-learned*))
+             (ignore-errors (delete-file tmp)))))
+
+  ;; ===================== Phase 8 -- Generation =====================
+  (format t "~%Phase 8 (generation) tests~%")
+  (reset)
+  ;; Declarative prose -> a fact store generation can describe from.
+  (read-text "Paris is the capital of France. France is a country in Europe.
+              French is the language of France. Marseille is a city in France.
+              The louvre is in France." :verbose nil)
+  (let ((desc (join-words (respond "tell me about france"))))
+    (check "describe assembles a multi-fact paragraph about a topic"
+           (and (search "france is a country" (string-downcase desc))
+                (search "capital is paris" (string-downcase desc))))
+    (check "describe aggregates several facts (not a single stored response)"
+           (and (search "europe" desc) (search "french" desc) (search "marseille" desc))))
+  (check "describe works for a different request phrasing"
+         (and (search "france" (string-downcase (join-words (respond "describe france")))) t))
+  (check "describe returns nil for an unknown topic"
+         (null (respond "tell me about florida")))
+  ;; QA-derived facts feed describe too (so it works on the starter-KB style)
+  (reset)
+  (learn "what is the capital of japan" "tokyo")
+  (learn "is japan a country" "yes")
+  (check "describe uses facts derived from learned question->answer pairs"
+         (let ((d (string-downcase (join-words (respond "tell me about japan")))))
+           (and (search "japan is a country" d) (search "capital is tokyo" d))))
+  ;; why: an is-a chain explanation
+  (reset)
+  (read-text "A cat is a mammal. A mammal is an animal." :verbose nil)
+  (let ((w (string-downcase (join-words (respond "why is a cat an animal")))))
+    (check "why explains via an is-a chain"
+           (and (search "cat is an animal because" w)
+                (search "cat is a mammal" w)
+                (search "mammal is an animal" w))))
+  (check "why returns nil when no explanatory chain is known"
+         (null (respond "why is a cat a planet")))
+  ;; the sequential transition model is grown and the fact store persists
+  (check "reading text grows the transition model"
+         (plusp (hash-table-count *transitions*)))
+  (check "generation facts persist across save / reload"
+         (let ((tmp "gen-temp.kb"))
+           (reset)
+           (read-text "A robin is a bird. The robin is in the garden." :verbose nil)
+           (save-network tmp) (reset)
+           (prog1 (and (load-network tmp)
+                       (plusp (hash-table-count *facts*))
+                       (search "robin is a bird"
+                               (string-downcase (join-words (respond "tell me about robin")))))
              (ignore-errors (delete-file tmp)))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"

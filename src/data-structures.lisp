@@ -33,6 +33,9 @@
 	   "*VCACHE*"
 	   "*VEC-MEAN*"
 	   "*FACTS-LEARNED*"
+	   "*TRANSITIONS*"
+	   "*SENTENCE-STARTS*"
+	   "*FACTS*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -57,6 +60,9 @@
 (defparameter *vcache* (make-hash-table :test 'equal)) ; derived concept-vector cache (rebuilt from *cooccur*; cleared on reset/reload)
 (defparameter *vec-mean* nil)                          ; cached global mean of concept vectors
 (defparameter *facts-learned* 0)                       ; cumulative count of facts learned (any source); persisted
+(defparameter *transitions* (make-hash-table :test 'equal)) ; word -> (next-word -> count): sequential model for generation (Phase 8)
+(defparameter *sentence-starts* (make-hash-table :test 'equal)) ; word -> count: how often a word starts a sentence
+(defparameter *facts* (make-hash-table :test 'equal)) ; (subject relation object) -> strength: declarative triples for generation
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -73,7 +79,10 @@
   (setq *cooccur* (make-hash-table :test 'equal))
   (setq *vcache* (make-hash-table :test 'equal))
   (setq *vec-mean* nil)
-  (setq *facts-learned* 0))
+  (setq *facts-learned* 0)
+  (setq *transitions* (make-hash-table :test 'equal))
+  (setq *sentence-starts* (make-hash-table :test 'equal))
+  (setq *facts* (make-hash-table :test 'equal)))
 
 (defstruct neuron
   "An unnamed neuron"

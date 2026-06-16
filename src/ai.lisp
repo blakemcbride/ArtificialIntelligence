@@ -36,6 +36,8 @@
 (require "operations")
 (use-package "operations")
 
+(require "generation")
+(use-package "generation")
 (require "processing")
 (use-package "processing")
 
@@ -187,8 +189,10 @@
    answer word list (or NIL)."
   (let* ((words    (as-words input))
 	 (resolved (resolve-followup words))
-	 (answer   (or (infer-answer resolved)    ; accurate concept-graph answer first
-		       (respond resolved))))        ; fall back to direct association
+	 (answer   (if (generation-request-p resolved)
+		       (respond resolved)         ; generation request (tell me about / why)
+		       (or (infer-answer resolved)  ; accurate concept-graph answer first
+			   (respond resolved)))))   ; fall back to direct association
     (remember-turn resolved)
     answer))
 
@@ -199,9 +203,8 @@
      3. read the teacher's line -- the correct response, or a confirm token
         (one of *confirm-words*) to accept a correct guess,
      4. learn from it (reinforce a correct guess / teach or correct otherwise).
-   Stop with `quit.' / `exit.' (or end-of-input).  On entry it loads saved memory if any,
-   else learns *starter-kb* (so a fresh system already knows things); it saves on exit and
-   prints the input neuron tree."
+   Stop with `.quit' / `.exit' (or end-of-input).  On entry it loads saved memory if any,
+   else learns *starter-kb* (so a fresh system already knows things); it saves on exit."
   (cond ((load-network)
          (format t "~&(loaded saved memory from ~a)~%" *save-file*))
         ((and *starter-kb* (probe-file *starter-kb*))
@@ -229,7 +232,9 @@
 		((quit-line-p in) (return))              ; bare quit/exit still stops the loop
 		(t
 		 (let* ((resolved (resolve-followup in)) ; conversation memory: fold in previous turn
-			(guess (or (infer-answer resolved) (respond resolved))))
+			(guess (if (generation-request-p resolved)
+				   (respond resolved)
+				   (or (infer-answer resolved) (respond resolved)))))
 		   (remember-turn resolved)
 		   (format t "  guess: ~a~%"
 			   (if guess (format nil "~{~a~^ ~}" guess) "(I don't know)"))
@@ -250,9 +255,7 @@
 			  (learn resolved teacher)
 			  (format t "  (learned)~%"))))))))))))))
   (save-network)
-  (format t "~&(memory saved to ~a)~%" *save-file*)
-  (terpri)
-  (dump-dictionary))
+  (format t "~&(memory saved to ~a)~%" *save-file*))
 
 ;;; --- Training-set import -------------------------------------------------------
 ;;; A training set is a text file of one relationship per line:
@@ -373,6 +376,8 @@
       (let ((words (tokenize s)))
 	(when words
 	  (note-cooccurrence words nil)                       ; similarity, always (no teacher)
+	  (note-sequence words)                               ; generation: transition model (Phase 8)
+	  (note-facts words)                                  ; generation: declarative triples
 	  (when (and extract (extract-fact words)) (incf facts)))))
     (when verbose (format t "~&read ~d sentences, learned ~d facts~%" (length sentences) facts))
     (values (length sentences) facts)))

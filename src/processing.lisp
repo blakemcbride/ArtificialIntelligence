@@ -34,6 +34,8 @@
 (use-package "operations")   ; run-operation / note-operation (learned operations over knowledge)
 (require "vectors")
 (use-package "vectors")      ; note-cooccurrence (distributed concept vectors, similarity by geometry)
+(require "generation")
+(use-package "generation")   ; respond-generation / note-sequence / note-fact-from-qa (Phase 8)
 
 ;;; The Processing component (Plan.md) bridges the input and output networks.  After
 ;;; an input sentence is built, build-structure returns a set of "meaning" neurons
@@ -129,20 +131,24 @@
    answer comes from spreading activation across the input->output associations; and if
    nothing is recalled, a learned template may compose one.  Secondary values are the
    winning root and its activation.  No weights change here."
-  (let* ((input-words (as-words input))
-	 (copied (copy-response input-words))             ; 1. attention copy head (say X -> X)
-	 (op (run-operation input-words)))                ; 0. learned operation over knowledge
-    (cond
-      (op (values op nil 0.0))
-      (copied (values copied nil 0.0))
-      (t (let ((composed (compose input-words)))          ; 2. compose from a learned template
-	   (cond
-	     (composed (values composed nil 0.0))
-	     (t (let* ((endings (build-structure (intern-words input-words)))
-		       (winner  (select-winner (spread-activation endings))))  ; 3. direct recall
-		  (if winner
-		      (values (produce-output winner) winner (neuron-current-value winner))
-		      (values nil nil 0.0))))))))))
+  (let ((input-words (as-words input)))
+    (if (generation-request-p input-words)
+	;; A recognized generation request (tell me about X / why ...) is OWNED by generation:
+	;; return its answer or NIL ("I don't know") -- never fall through to brittle recall.
+	(values (respond-generation input-words) nil 0.0)
+	(let ((copied (copy-response input-words))         ; 1. attention copy head (say X -> X)
+	      (op (run-operation input-words)))            ; 0. learned operation over knowledge
+	  (cond
+	    (op (values op nil 0.0))
+	    (copied (values copied nil 0.0))
+	    (t (let ((composed (compose input-words)))      ; 2. compose from a learned template
+		 (cond
+		   (composed (values composed nil 0.0))
+		   (t (let* ((endings (build-structure (intern-words input-words)))
+			     (winner  (select-winner (spread-activation endings)))) ; 3. direct recall
+			(if winner
+			    (values (produce-output winner) winner (neuron-current-value winner))
+			    (values nil nil 0.0))))))))))))
 
 ;;; --- Reinforcement & decay (Phase 4): the continual-learning dynamics ----------
 ;;;
@@ -243,4 +249,7 @@
     (note-copy input-words correct-words)           ; also learn copy cues (attention head)
     (note-template input-words correct-words)       ; also learn response templates (composition)
     (note-cooccurrence input-words correct-words)    ; also grow the distributed concept vectors (polarity-bound)
+    (note-sequence input-words)                      ; also grow the generation transition model (Phase 8)
+    (note-sequence correct-words)
+    (note-fact-from-qa input-words correct-words)    ; also derive a declarative fact for describe
     guess))

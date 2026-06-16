@@ -88,6 +88,23 @@
 	     *cooccur*)
     acc))
 
+(defun transitions->alist ()
+  "Flatten *transitions* (word -> next-word -> count) to a nested alist."
+  (let (acc)
+    (maphash (lambda (w tab)
+	       (let (inner) (maphash (lambda (nw n) (push (cons nw n) inner)) tab)
+		    (push (cons w inner) acc)))
+	     *transitions*)
+    acc))
+
+(defun starts->alist ()
+  "Flatten *sentence-starts* (word -> count) to an alist."
+  (let (acc) (maphash (lambda (w n) (push (cons w n) acc)) *sentence-starts*) acc))
+
+(defun facts->alist ()
+  "Flatten *facts* ((subject relation object) -> strength) to an alist."
+  (let (acc) (maphash (lambda (k n) (push (cons k n) acc)) *facts*) acc))
+
 (defun hash->id-alist (table)
   "Alist of (key . neuron-id) for a string -> neuron hash table."
   (let (acc)
@@ -110,7 +127,10 @@
 		   :templates (templates->alist)
 		   :op-templates (op-templates->alist)
 		   :cooccur (cooccur->alist)
-		   :facts-learned *facts-learned*)
+		   :facts-learned *facts-learned*
+		   :transitions (transitions->alist)
+		   :sentence-starts (starts->alist)
+		   :facts (facts->alist))
 	     s)
       (terpri s)))
   path)
@@ -170,6 +190,15 @@
 	(dolist (oc (cdr pair)) (setf (gethash (car oc) tab) (cdr oc)))
 	(setf (gethash (car pair) *cooccur*) tab)))
     (setf *facts-learned* (or (getf data :facts-learned) 0))   ; restore the learned-facts count
+    ;; generation (Phase 8): transition model, sentence starts, declarative facts
+    (dolist (pair (getf data :transitions))
+      (let ((tab (make-hash-table :test 'equal)))
+	(dolist (nc (cdr pair)) (setf (gethash (car nc) tab) (cdr nc)))
+	(setf (gethash (car pair) *transitions*) tab)))
+    (dolist (pair (getf data :sentence-starts))
+      (setf (gethash (car pair) *sentence-starts*) (cdr pair)))
+    (dolist (pair (getf data :facts))
+      (setf (gethash (car pair) *facts*) (cdr pair)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
@@ -220,7 +249,9 @@
 		       :copy-cues        (hash-table-count *copy-cues*)
 		       :templates        (hash-table-count *templates*)
 		       :operations       (hash-table-count *op-templates*)
-		       :vector-words     (hash-table-count *cooccur*))))
+		       :vector-words     (hash-table-count *cooccur*)
+		       :facts            (hash-table-count *facts*)
+		       :transition-heads (hash-table-count *transitions*))))
       (format t "~&--- system stats ---~%")
       (loop for (k v) on stats by #'cddr
 	    do (format t "  ~16a ~:d~%" (string-downcase (symbol-name k)) v))
