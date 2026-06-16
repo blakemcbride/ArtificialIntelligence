@@ -613,6 +613,8 @@
          (equal '("a" "mathematician") (ask "who was ada lovelace")))
   (check "read-text: superlative fact (largest planet -> jupiter)"
          (equal '("jupiter") (ask "what is the largest planet")))
+  (check "read-text: particle surname kept (van gogh -> a painter)"
+         (equal '("a" "painter") (ask "who was van gogh")))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
