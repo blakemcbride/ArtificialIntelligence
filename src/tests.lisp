@@ -306,17 +306,46 @@
       (check ".stats command prints stats inside the loop"
              (and (search "--- system stats ---" out) t))
       (check ".save command writes the knowledge base (case-preserved filename)"
-             (and (search "saved knowledge base to" out) (probe-file kb) t)))
+             (and (search "now the active file" out) (probe-file kb) t)))
     (let ((out (with-output-to-string (*standard-output*)
                  (with-input-from-string
                      (*standard-input*
                       (format nil ".load ~a~%say hi.~%yes.~%.quit~%" kb))
                    (main)))))
       (check ".load command restores a saved knowledge base"
-             (and (search "loaded knowledge base from" out)
+             (and (search "now the active file" out)
                   (search "guess: hi there" out) t)))
+    (let ((out (with-output-to-string (*standard-output*)
+                 (with-input-from-string (*standard-input* (format nil ".list~%.quit~%"))
+                   (main)))))
+      (check ".list command lists the .kb files in the current directory"
+             (and (search ".kb file" out) (search kb out) t)))
     (ignore-errors (delete-file *save-file*))
     (ignore-errors (delete-file kb)))
+
+  ;; .load / .save make FILE the active file: after .load FILE, exiting auto-saves back to
+  ;; FILE -- not to the default *save-file* (the bug this guards against).
+  (let ((*save-file* "phase5-default.kb") (*starter-kb* nil)
+        (active "phase5-active.kb"))
+    (ignore-errors (delete-file *save-file*))
+    (ignore-errors (delete-file active))
+    ;; seed the active file with one fact, via .save
+    (with-output-to-string (*standard-output*)
+      (with-input-from-string (*standard-input*
+                               (format nil "alpha.~%one.~%.save ~a~%.quit~%" active))
+        (main)))
+    ;; a fresh session at the default file: .load the active file, teach, then quit
+    (let ((*save-file* "phase5-default.kb"))
+      (with-output-to-string (*standard-output*)
+        (with-input-from-string (*standard-input*
+                                 (format nil ".load ~a~%beta.~%two.~%.quit~%" active))
+          (main))))
+    (import-kb active)
+    (check ".load makes the loaded file the auto-save target (new fact lands in it)"
+           (equal '("two") (respond "beta")))
+    (check ".load leaves the default save file untouched"
+           (not (probe-file "phase5-default.kb")))
+    (ignore-errors (delete-file active)))
 
   ;; ===================== Phase 6 -- Persistence =====================
   (format t "~%Phase 6 tests~%")

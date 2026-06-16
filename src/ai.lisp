@@ -67,10 +67,13 @@
   (format t "Commands start with a period and are typed alone on a line:~%")
   (format t "  .help          show this help~%")
   (format t "  .stats         show system statistics~%")
-  (format t "  .save FILE     save the knowledge base to FILE     (e.g. .save my.kb)~%")
-  (format t "  .load FILE     clear, then load the knowledge base from FILE~%")
+  (format t "  .list [DIR]    list the .kb files in DIR (default: current directory)~%")
+  (format t "  .save FILE     save to FILE and make it the active file~%")
+  (format t "  .load FILE     clear, then load FILE and make it the active file~%")
   (format t "  .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)~%")
-  (format t "  .quit          save and exit                       (also .exit)~%"))
+  (format t "  .quit          save and exit                       (also .exit)~%")
+  (format t "The active file is ~a; it is loaded on start and auto-saved on exit.~%"
+	  *save-file*))
 
 (defun parse-command (line)
   "If raw input LINE is a leading-period command, return (values NAME ARG): NAME is the
@@ -92,20 +95,41 @@
 				       (subseq arg 0 (1- (length arg))))))
 	(values name arg)))))
 
+(defun list-kb-files (arg)
+  "Print the .kb files in directory ARG (the current directory when ARG is empty), sorted."
+  (let* ((dirp   (plusp (length arg)))
+	 (where  (if dirp arg "."))
+	 (prefix (cond ((not dirp) "")
+		       ((char= #\/ (char arg (1- (length arg)))) arg)   ; already ends in /
+		       (t (concatenate 'string arg "/"))))
+	 (files  (sort (mapcar #'file-namestring
+			       (directory (concatenate 'string prefix "*.kb")))
+		       #'string<)))
+    (if files
+	(progn
+	  (format t "  (~d .kb file~:p in ~a)~%" (length files) where)
+	  (dolist (f files) (format t "    ~a~%" f)))
+	(format t "  (no .kb files in ~a)~%" where))))
+
 (defun run-command (name arg)
   "Execute a leading-period loop command.  Return :quit to stop the loop, else NIL."
   (cond
     ((or (string= name "quit") (string= name "exit")) :quit)
-    ((string= name "help")  (print-help)    nil)
-    ((string= name "stats") (system-stats)  nil)
+    ((string= name "help")  (print-help)        nil)
+    ((string= name "stats") (system-stats)      nil)
+    ((string= name "list")  (list-kb-files arg) nil)
     ((string= name "save")
-     (if (plusp (length arg))
-	 (format t "  (saved knowledge base to ~a)~%" (save-network arg))
-	 (format t "  (.save needs a filename, e.g. .save my.kb)~%"))
+     (cond ((zerop (length arg)) (format t "  (.save needs a filename, e.g. .save my.kb)~%"))
+	   (t (save-network arg)
+	      (setf *save-file* arg)              ; FILE becomes the active (auto-saved) file
+	      (format t "  (saved to ~a -- now the active file; it will auto-save here on exit)~%"
+		      arg)))
      nil)
     ((string= name "load")
      (cond ((zerop (length arg)) (format t "  (.load needs a filename)~%"))
-	   ((load-network arg)    (format t "  (loaded knowledge base from ~a)~%" arg))
+	   ((load-network arg)
+	    (setf *save-file* arg)                ; FILE becomes the active (auto-saved) file
+	    (format t "  (loaded ~a -- now the active file; it will auto-save here on exit)~%" arg))
 	   (t (format t "  (could not load ~a -- file not found; knowledge base unchanged)~%" arg)))
      nil)
     ((string= name "read")
