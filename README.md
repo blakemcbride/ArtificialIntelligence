@@ -4,15 +4,25 @@ This is an experimental **LLM (large language model) design** — an attempt at 
 fundamentally different kind of language-learning AI, built to pursue two goals that
 today's mainstream LLMs do **not** meet:
 
-1. **Continual learning — no separate training phase.** A conventional LLM is frozen once
-   it is trained; using it never changes it. This system learns *while it is used*: you
-   teach it one interaction at a time and it keeps what works. Learning *is* using it.
+1. **Continual learning — no separate, nonvolatile pre-training phase.** A conventional LLM
+   is frozen once it is trained; using it never changes it. This system learns *while it is
+   used*: you teach it one interaction at a time and it keeps what works. Learning *is*
+   using it.
+   *Why:* so the system gets **continually smarter** over time, instead of holding a fixed,
+   static body of knowledge that only ever changes when someone retrains it from scratch.
 
-2. **No backpropagation.** Mainstream LLMs adjust their weights with backpropagation — a
-   global error signal the human brain almost certainly does not use. This system learns
-   with only **local, Hebbian-style rules** ("cells that fire together wire together";
-   strengthen what succeeds, let the unused fade), which is closer to how real neurons are
-   thought to work.
+2. **Hebbian learning instead of backpropagation.** Mainstream LLMs adjust their weights
+   with backpropagation. This system uses only **local, Hebbian-style rules** ("cells that
+   fire together wire together"; strengthen what succeeds, let the unused fade).
+   *Why — two reasons, and note neither is "Hebbian learns better":*
+   - **Biological plausibility.** Backpropagation is, as a pure learning algorithm, almost
+     certainly *better* than Hebbian learning — but the human brain cannot plausibly be
+     running it (there is no global backward pass or exact gradient transport in neural
+     tissue). The brain much more likely uses something local, like Hebbian learning. The
+     aim here is a brain-like mechanism, not the best optimizer.
+   - **Simplicity and cost.** Hebbian learning is *far, far* simpler and far less
+     computationally expensive than backpropagation — a few local weight updates per fact,
+     with no backward pass over the whole network.
 
 It is a research prototype, not a production model — an alternative architecture rather
 than a transformer. Concretely, it is a network of neuron-like nodes that you teach

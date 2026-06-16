@@ -14,23 +14,36 @@ This file has two parts:
 
 ## Part 1 — The Vision
 
-### The two problems with modern LLMs this system attacks
+### The two goals (and why)
 
-**Problem 1 — LLMs do not learn while in use.**
+These are the two design goals the whole project exists to pursue. Everything in the
+build plan below is in service of them.
+
+**Goal 1 — Continual learning, with no separate, nonvolatile pre-training phase.**
 An LLM's knowledge is frozen at training time. Training and inference are separate
 phases: you build the model against a fixed dataset, then deploy it read-only. New
 experience during use changes nothing. We want a system with **no separate training
 phase** — it learns *online*, one interaction at a time, the way a person picks
 things up during a conversation. Learning *is* using it.
+*Why:* so the system gets **continually smarter** over time, rather than carrying a
+static body of knowledge that changes only when someone retrains it.
 
-**Problem 2 — Backpropagation is biologically implausible.**
+**Goal 2 — Hebbian learning rather than backpropagation.**
 LLMs adjust their weights with backpropagation: a global error signal is propagated
-backward through every layer to compute a gradient for every weight. There is no good
-evidence the brain does anything like this (no global backward pass, no exact gradient
-transport). We want something **simpler and more brain-like**: local rules where a
-connection changes based only on the activity of the two neurons it joins, plus a
-coarse "that worked / that didn't" signal. Strengthen what succeeds; let what goes
-unused slowly fade.
+backward through every layer to compute a gradient for every weight. We instead use
+local rules where a connection changes based only on the activity of the two neurons
+it joins, plus a coarse "that worked / that didn't" signal — strengthen what succeeds,
+let what goes unused slowly fade. There are **two reasons**, and neither is a claim that
+Hebbian learning is the better learning algorithm:
+
+- **(a) Biological plausibility.** Backpropagation is, as a pure optimizer, definitely
+  *better* than Hebbian learning — but the brain almost certainly is **not** using it
+  (there is no global backward pass and no exact gradient transport in neural tissue). It
+  far more likely uses something local, like Hebbian learning. The goal is a brain-like
+  mechanism, not the strongest optimizer.
+- **(b) Simplicity and computational cost.** Hebbian learning is **far, far** simpler and
+  far less computationally expensive than backpropagation — a handful of local weight
+  updates per fact, with no backward pass over the entire network.
 
 ### The mechanism Blake described (the heart of the design)
 
