@@ -474,7 +474,7 @@
   ;; ===================== Knowledge base & training =====================
   (format t "~%Knowledge base & training tests~%")
   (reset)
-  (let ((n (train-from-file "training-set.txt" :verbose nil)))
+  (let ((n (train-from-file "generalization-test.txt" :verbose nil)))
     (check "train-from-file loads the large starter set (>100 facts)" (> n 100))
     ;; horses & birds were taught legs/feet/run/animal but NEVER 'walk on their legs'
     (check "imported KB generalizes: horses walk on their legs"
@@ -514,7 +514,7 @@
   (check "tokenize splits on a period followed by a space"
          (equal '("save" "my.kb" "now") (tokenize "save my.kb. now")))
   (reset)
-  (train-from-file "training-set.txt" :verbose nil)
+  (train-from-file "generalization-test.txt" :verbose nil)
   (check "infer-p accepts a sentence string (horse generalizes in)"
          (infer-p "Do horses walk on their legs?" "yes"))
   (check "infer-p (string) still excludes snakes"
@@ -554,7 +554,7 @@
   ;; ===================== Conversation memory (follow-ups) =====================
   (format t "~%Conversation memory tests~%")
   (reset)
-  (train-from-file "training-set.txt" :verbose nil)
+  (train-from-file "generalization-test.txt" :verbose nil)
   (check "ask answers a direct question (do dogs have legs -> yes)"
          (equal '("yes") (ask "do dogs have legs?")))
   (check "follow-up 'and cats?' resolves against the previous turn"
@@ -742,6 +742,26 @@
                        (search "robin is a bird"
                                (string-downcase (join-words (respond "tell me about robin")))))
              (ignore-errors (delete-file tmp)))))
+
+  ;; ===================== Unified loader (auto-routing) =====================
+  (format t "~%Unified loader tests~%")
+  (reset)
+  (let ((tmp "mixed-temp.txt"))
+    (with-open-file (s tmp :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (format s "# a mixed knowledge file~%")
+      (format s "ping => pong~%")                       ; supervised pair
+      (format s "Paris is the capital of France.~%")    ; prose -> fact
+      (format s ";; a comment line~%~%"))
+    (multiple-value-bind (pairs psent pfacts) (load-knowledge tmp :verbose nil)
+      (declare (ignore pfacts))
+      (check "load-knowledge routes => lines as supervised pairs" (= 1 pairs))
+      (check "load-knowledge routes other lines as prose" (= 1 psent)))
+    (check "load-knowledge: the supervised pair is recalled"
+           (equal '("pong") (respond "ping")))
+    (check "load-knowledge: the prose fact is learned (describe finds it)"
+           (search "capital is paris"
+                   (string-downcase (join-words (respond "tell me about france")))))
+    (ignore-errors (delete-file tmp)))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

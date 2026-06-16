@@ -72,7 +72,7 @@ Commands start with a period and are typed alone on a line:
   .list [DIR]    list the .kb files in DIR (default: current directory)
   .save FILE     save to FILE and make it the active file
   .load FILE     clear, then load FILE and make it the active file
-  .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)
+  .read FILE     learn from FILE (auto-detects => pairs and/or prose)
   .quit          save and exit                       (also .exit)
 The active file is auto-save.kb; it is loaded on start and auto-saved on exit.
 
@@ -120,7 +120,7 @@ input phrase => answer
 ```
 
 Blank lines and lines starting with `#` or `;` are ignored, so you can comment and group.
-Two sets ship with the system: `src/training-set.txt` (about 105 facts — the focused
+Two sets ship with the system: `src/generalization-test.txt` (about 105 facts — the focused
 generalization demo) and `src/knowledge-base.txt` (a broad **starter knowledge base**,
 ~2,100 facts spanning greetings, a large animal-trait matrix, composition, categories,
 colors, opposites, arithmetic, world geography, history, space, and simple science). Import either with
@@ -147,6 +147,20 @@ do fish fly => no
 ```
 
 …and `(train-from-file "my-facts.txt")`.
+
+**One file, either format.** There are two ways to teach from text — supervised
+`input => answer` pairs (`train-from-file`) and raw prose (`read-text-file`).
+You don't have to choose per file: `load-knowledge` is a single front door that reads a file
+line by line and routes each line itself — a line with `=>` is learned as a pair, any other
+non-comment line is read as prose — so one file can freely mix both:
+
+```lisp
+(load-knowledge "my-stuff.txt")
+;; lines like  ping => pong            are learned as pairs
+;; lines like  Paris is the capital of France.   are read as prose
+```
+
+The `.read FILE` loop command uses `load-knowledge`, so it handles either or mixed content.
 
 You can also teach a single pair from code — `learn` takes an input and an answer (each a
 sentence string or a word list) and returns what the system *would* have answered *before*
@@ -265,7 +279,7 @@ remembers the resolved turn, so follow-ups chain:
 
 ```lisp
 (reset)
-(train-from-file "training-set.txt")
+(train-from-file "generalization-test.txt")
 (ask "do dogs have legs?")     ; => ("yes")
 (ask "and cats?")              ; => ("yes")   (resolved to "do cats have legs")
 (ask "what about snakes?")     ; => ("no")    (resolved to "do snakes have legs")
@@ -366,7 +380,7 @@ Start fresh and train on the starter set:
 
 ```lisp
 (reset)                              ; wipe memory
-(train-from-file "training-set.txt") ; => 105
+(train-from-file "generalization-test.txt") ; => 105
 ```
 
 Now ask the same question about several things. Only `dogs/cats/goats/cows/lions/people`
@@ -441,6 +455,7 @@ human-readable s-expression — you can peek at it.
 | Start an interactive teaching session | `(main)` |
 | Teach one pair from code | `(learn "Cats purr." "yes")` |
 | Bulk-teach from a file | `(train-from-file "file.txt")` |
+| Load a file of either/mixed format | `(load-knowledge "file.txt")` |
 | Get the system's answer to an input | `(respond "Do cats purr?")` |
 | Ask conversationally (resolves follow-ups) | `(ask "and cats?")` |
 | Ask a computed question (learned operation) | `(respond "how many animals do you know")` |

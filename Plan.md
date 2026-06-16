@@ -521,7 +521,7 @@ continual-learning behavior can be regression-checked.
       members (`member-baseline` × `*concept-fraction*`, with a small floor) — no hardcoded
       cutoff.
 - [x] **End-to-end on a starter KB:** `train-from-file` imports a training set
-      (`input => answer` per line; `#`/`;` comments); `src/training-set.txt` (105 facts)
+      (`input => answer` per line; `#`/`;` comments); `src/generalization-test.txt` (105 facts)
       covers several categories. After import, **horses/birds generalize** "walk on their
       legs" (never taught) while **snakes/fish/worms/cars/tables/rocks are excluded** —
       including "even snakes". `export-kb`/`import-kb` round-trip the whole KB. Suite 104.

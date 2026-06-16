@@ -51,7 +51,8 @@
   "Training file `main' learns on first startup when there is no saved memory yet, so a
    fresh system already knows something.  Bind to NIL to start completely blank.")
 (declaim (ftype function train-from-file))   ; defined below; main calls it on first startup
-(declaim (ftype function read-text-file))    ; defined below; the .read command calls it
+(declaim (ftype function read-text-file))    ; defined below
+(declaim (ftype function load-knowledge))    ; defined below; the .read command calls it
 
 (defun words-of (neurons)
   "The word strings of a create-line result, in order."
@@ -72,7 +73,7 @@
   (format t "  .list [DIR]    list the .kb files in DIR (default: current directory)~%")
   (format t "  .save FILE     save to FILE and make it the active file~%")
   (format t "  .load FILE     clear, then load FILE and make it the active file~%")
-  (format t "  .read FILE     read FILE as prose and learn from it (e.g. .read prose.txt)~%")
+  (format t "  .read FILE     learn from FILE (auto-detects => pairs and/or prose)~%")
   (format t "  .quit          save and exit                       (also .exit)~%")
   (format t "The active file is ~a; it is loaded on start and auto-saved on exit.~%"
 	  *save-file*))
@@ -136,7 +137,7 @@
      nil)
     ((string= name "read")
      (cond ((zerop (length arg)) (format t "  (.read needs a filename)~%"))
-	   ((probe-file arg)      (read-text-file arg))   ; prints its own sentence/fact counts
+	   ((probe-file arg)      (load-knowledge arg))   ; auto-routes => pairs and prose
 	   (t (format t "  (could not read ~a -- file not found)~%" arg)))
      nil)
     (t (format t "  (unknown command .~a -- type .help for the command list)~%" name)
@@ -385,3 +386,38 @@
 (defun read-text-file (path &rest args)
   "Read raw text from PATH and learn from it (see read-text)."
   (apply #'read-text (slurp-file path) args))
+
+;;; --- Unified loader: one front door, two underlying modes ----------------------
+;;; The system learns two ways -- supervised `input => answer' pairs (learn) and raw prose
+;;; (read-text) -- and they are genuinely different (a pair states an exact stimulus->
+;;; response; prose is interpreted best-effort).  But the *author* shouldn't have to keep
+;;; two file formats straight: `load-knowledge' reads a file line by line and ROUTES each
+;;; line to the right mode, so one file may freely mix both.  train-from-file / read-text
+;;; are unchanged underneath -- this is just the smart front door.
+
+(defun load-knowledge (path &key (verbose t) (separator "=>"))
+  "Load a knowledge file, auto-routing each line:
+     * a line containing SEPARATOR (default \"=>\") is a supervised pair  -> learn;
+     * any other non-comment line is prose                                -> read-text;
+     * blank lines and lines beginning with # or ; are ignored.
+   One file may mix both formats.  Returns (values pairs-learned prose-sentences prose-facts)."
+  (let ((pairs 0) (psent 0) (pfacts 0))
+    (with-open-file (s path :direction :input)
+      (loop for line = (read-line s nil nil)
+	    while line
+	    do (let ((trimmed (string-left-trim '(#\Space #\Tab) line)))
+		 (cond
+		   ((or (zerop (length trimmed)) (member (char trimmed 0) '(#\# #\;)))
+		    nil)                                   ; comment / blank
+		   ((find-substring separator line)        ; supervised input => answer
+		    (let* ((sep (find-substring separator line))
+			   (in  (tokenize (subseq line 0 sep)))
+			   (out (tokenize (subseq line (+ sep (length separator))))))
+		      (when (and in out) (learn in out) (incf pairs))))
+		   (t                                      ; prose
+		    (multiple-value-bind (n f) (read-text trimmed :verbose nil)
+		      (incf psent n) (incf pfacts f)))))))
+    (when verbose
+      (format t "~&loaded ~a: ~:d supervised pair~:p, ~:d prose sentence~:p (~:d fact~:p)~%"
+	      path pairs psent pfacts))
+    (values pairs psent pfacts)))

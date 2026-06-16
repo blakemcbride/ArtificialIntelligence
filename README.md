@@ -85,7 +85,7 @@ The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthro
 ;; load the system (run this from inside src/)
 (load "load.lisp")
 
-(train-from-file "training-set.txt")               ; learn a starter knowledge base
+(train-from-file "generalization-test.txt")               ; learn a starter knowledge base
 (infer-p "Do horses walk on their legs?" "yes")    ; => T   (generalized category)
 (infer-p "Do snakes walk on their legs?" "yes")    ; => NIL (excluded)
 
@@ -119,7 +119,7 @@ Run the test suite from `src/` with `make test`.
 ## Repository structure
 
 * `src/` — the Common Lisp implementation (the live system), plus `knowledge-base.txt` (the
-  broad starter KB auto-learned on first run) and `training-set.txt` (the focused
+  broad starter KB auto-learned on first run) and `generalization-test.txt` (the focused
   generalization demo used by the tests).
 * `tutorial/` — a hands-on tutorial.
 * `notes/` — my original, unfiltered notes, an overview of the intended design, and a
