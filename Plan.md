@@ -355,10 +355,18 @@ self-supervised learning: each sentence feeds the distributed-vector co-occurren
 (*unsupervised* similarity — read about a new thing and it clusters with its kin, no
 teacher), and simple declarative patterns also teach facts — "X is the Y of Z" → a
 relational fact ("Kigali is the capital of Rwanda" → answers "what is the capital of
-Rwanda"), "X is a Y" → membership; questions are skipped.  Pattern extraction is
-deliberately light (regular sentences only); turning arbitrary prose into facts is the open,
-hard problem (and heavy parsing drifts back toward the symbolic style).  But similarity from
-raw text is free and continual, exactly in the project's spirit.
+Rwanda"), "X is a Y" → membership, and "X was a ROLE" → "who was X" (so past-tense history
+works); questions are skipped.  Pattern extraction is deliberately light (regular sentences
+only); turning arbitrary prose into facts is the open, hard problem (and heavy parsing drifts
+back toward the symbolic style).  But similarity from raw text is free and continual, exactly
+in the project's spirit.
+
+A sample corpus `src/prose.txt` (history + geography written as plain sentences) ships with
+the system.  `(read-text-file "prose.txt")` grows the KB *from prose*: it teaches new
+capitals (Reykjavik → Iceland), people ("who was Ada Lovelace" → a mathematician), and
+relational facts ("what is the birthplace of democracy" → Greece) that the curated KB never
+contained, and the new entities cluster by similarity (Iceland's nearest neighbours come out
+as other European countries).  This is the "feed it a body of prose" demonstration.
 
 ---
 

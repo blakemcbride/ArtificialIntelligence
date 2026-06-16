@@ -605,6 +605,12 @@
          (equal '("yes") (ask "is ecuador a country")))
   (check "read-text reports how many sentences it read"
          (= 2 (read-text "The sky is high. Birds sing." :verbose nil)))
+  ;; feed a whole prose corpus from a file; facts below are ONLY in prose.txt, not the KB
+  (read-text-file "prose.txt" :verbose nil)
+  (check "read-text-file: a new capital learned from the prose corpus (iceland -> reykjavik)"
+         (equal '("reykjavik") (ask "what is the capital of iceland")))
+  (check "read-text-file: 'who was X' learned from prose (ada lovelace -> a mathematician)"
+         (equal '("a" "mathematician") (ask "who was ada lovelace")))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*

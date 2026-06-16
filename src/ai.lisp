@@ -229,7 +229,9 @@
    'X is the Y of Z' (relational) and 'X is/are Y' (membership/copula).  Skips questions."
   (when (and words (not (member (first words) *question-words* :test #'string=)))
     (let ((cp (or (position "is" words :test #'string=)
-		  (position "are" words :test #'string=))))
+		  (position "are" words :test #'string=)
+		  (position "was" words :test #'string=)
+		  (position "were" words :test #'string=))))
       (when (and cp (> cp 0) (< cp (1- (length words))))
 	(let ((cop (nth cp words)) (before (subseq words 0 cp)) (after (subseq words (1+ cp))))
 	  (cond
@@ -249,7 +251,11 @@
 		 (learn (format nil "what is the ~a of ~a" (join-words y) (join-words z))
 			(join-words after))
 		 t)))
-	    ;; "X is/are Y"  ->  is/are X Y => yes
+	    ;; "X was a/an Y"  ->  who was X => a/an Y   (a person and their role)
+	    ((and (string= cop "was") (member (first after) '("a" "an") :test #'string=))
+	     (learn (format nil "who was ~a" (join-words before)) (join-words after))
+	     t)
+	    ;; "X is/are/was/were Y"  ->  is/are/... X Y => yes
 	    (t (learn (format nil "~a ~a ~a" cop (join-words before) (join-words after)) "yes")
 	       t)))))))
 

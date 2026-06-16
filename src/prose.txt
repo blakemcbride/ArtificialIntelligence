@@ -1,0 +1,39 @@
+Paris is the capital of France. France is a country in Europe. France is a country. The Eiffel Tower is in Paris. The Seine is a river in France.
+Rome is the capital of Italy. Italy is a country in Europe. Italy is a country. The Colosseum is in Rome. Rome is an ancient city.
+Madrid is the capital of Spain. Spain is a country in Europe. Spain is a country.
+Berlin is the capital of Germany. Germany is a country in Europe. The Rhine is a river in Germany.
+London is the capital of England. The Thames is a river in England. Big Ben is in London.
+Athens is the capital of Greece. Greece is a country in Europe. The Acropolis is in Athens. The Parthenon is in Athens. Greece is the birthplace of democracy.
+Lisbon is the capital of Portugal. Portugal is a country in Europe.
+Vienna is the capital of Austria. The Danube is a river in Europe.
+Reykjavik is the capital of Iceland. Iceland is a country in Europe. Iceland is a country. Iceland is an island.
+Oslo is the capital of Norway. Norway is a country in Europe.
+Amsterdam is the capital of the Netherlands. The Netherlands is a country in Europe.
+The Alps are mountains in Europe. Mont Blanc is a mountain in the Alps.
+
+Tokyo is the capital of Japan. Japan is a country in Asia. Japan is an island nation. Mount Fuji is a mountain in Japan.
+Beijing is the capital of China. China is a country in Asia. The Great Wall is in China.
+New Delhi is the capital of India. India is a country in Asia. The Taj Mahal is in India. The Ganges is a river in India.
+Bangkok is the capital of Thailand. Thailand is a country in Asia.
+The Himalayas are mountains in Asia. Mount Everest is a mountain in the Himalayas. Mount Everest is the tallest mountain.
+
+Cairo is the capital of Egypt. Egypt is a country in Africa. The pyramids are in Egypt. The Sphinx is in Egypt. The Nile is a river in Africa.
+Nairobi is the capital of Kenya. Kenya is a country in Africa.
+The Sahara is a desert in Africa.
+
+Washington is the capital of the United States. The United States is a country in North America.
+Ottawa is the capital of Canada. Canada is a country in North America.
+Brasilia is the capital of Brazil. Brazil is a country in South America. The Amazon is a river in South America. The Amazon is a rainforest.
+Lima is the capital of Peru. Peru is a country in South America. Machu Picchu is in Peru.
+Buenos Aires is the capital of Argentina. The Andes are mountains in South America.
+Canberra is the capital of Australia. Australia is a continent. The Sydney Opera House is in Australia.
+
+Latin is the language of ancient Rome. The Roman Empire is an ancient empire. Rome is the center of the Roman Empire.
+Egypt is famous for the pyramids. The pyramids are ancient monuments. Greece is famous for philosophy.
+
+Albert Einstein was a physicist. Isaac Newton was a physicist. Galileo was an astronomer. Charles Darwin was a scientist.
+William Shakespeare was a playwright. Leonardo da Vinci was an artist. Michelangelo was an artist.
+Napoleon was an emperor. Cleopatra was the queen of Egypt. Julius Caesar was a Roman general.
+Aristotle was a philosopher. Socrates was a philosopher. Plato was a philosopher.
+Marie Curie was a scientist. Ada Lovelace was a mathematician. Alan Turing was a mathematician.
+Florence Nightingale was a nurse. Christopher Wren was an architect. Charles Dickens was a writer.
