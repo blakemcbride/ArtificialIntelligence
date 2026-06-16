@@ -46,6 +46,7 @@ remains open: composing them at depth with a local rule.
 | **A head learns its role** | `learned-attention-experiment.lisp` | A single head **learns its attention offset** from data by a local reward rule. Same architecture, different data → different function (period-2 → k=1, the previous-token head; period-3 → k=2). | positional only; discrete |
 | **Two learned heads, stacked** | `learned-induction-experiment.lisp` | **Both** heads of the induction circuit are discovered from data by local reward; layer 1's role is rewarded only **through** layer 2's prediction — **credit assignment through depth, locally**. Rediscovers `(o1=1, r2=0)`; 100% held-out incl. novel tokens; one-layer scores 0%. | learns a discrete choice from a small menu |
 | **Learned content weights** | `learned-qk-attention-experiment.lisp` | A content-based head whose **continuous query-key weight matrix `M`** (score = `qᵀ M k`) is learned by a local reward-modulated Hebbian rule. Discovers `M ≈ identity` ("attend to the same token, copy its successor") — a **general** operation that does in-context learning on **tokens never seen in training**. | one layer; single head |
+| **Composition at depth** | `deep-composition-experiment.lisp` | Two layers trained by **local, layer-wise objectives** (no backprop) **compose** into an induction circuit, and **depth is required**: with a position-local value read, a single trained content layer can only return the matched token (0.37), while the 2-layer circuit returns its successor (1.00, incl. novel tokens). Layer 1 learns the previous-token head from its *own* target; layer 2 a continuous content matrix on top. | greedy per-layer (not one unified rule); 2 layers; toy scale |
 
 All of the above use only local rules — outer-product binding and reward-modulated Hebbian
 updates — and **no backpropagation**.
@@ -69,18 +70,24 @@ The cleanup step that recurs (decode → re-encode between layers) is the local-
 
 ---
 
-## 4. The one frontier that remains
+## 4. Composition at depth — first PoC, and what still remains
 
-Every ingredient works **in isolation**. The unsolved part is **composition at depth**:
+**Depth composition under local learning now has a working PoC**
+(`deep-composition-experiment.lisp`): a two-layer induction circuit trained by **local,
+layer-wise objectives** (no backprop) — layer 1 learns the previous-token head from its own
+target, layer 2 a continuous content matrix on top — that **cooperate**, generalize to novel
+tokens, and **require depth** (a single trained content layer fails). Combined with the earlier
+steps, every transformer behavior now has a local-learning realization.
 
-> Stack **many** locally-learned heads/layers so they **cooperate** — a learned layer-1 feeding
-> a learned layer-2 feeding layer-3 … — trained **together** by a local rule, with content-based
-> (continuous) query/key/value weights at every layer.
+What still remains is **depth at scale under one rule**:
 
-`learned-induction-experiment.lisp` does depth-2 credit assignment but over a tiny discrete
-menu; `learned-qk-attention-experiment.lisp` learns continuous content weights but for a single
-layer. Combining them — continuous weights *and* many cooperating layers, learned locally — is
-the genuine research step. The established backprop-free approaches aimed exactly here:
+> Stack **many** cooperating layers (not just two), **multi-head**, trained by a **single
+> unified local rule** (rather than a hand-chosen objective per layer), with content-based
+> continuous weights throughout — at a scale where competence, not just mechanism, shows.
+
+The current PoC is *greedy / layer-wise* (each layer given its own local objective) and only two
+layers deep. Turning that into many layers trained jointly by one local rule is the genuine
+research step. The established backprop-free approaches aim exactly here:
 
 - **Predictive coding** (local error units, Hebbian-like updates that approximate the gradient),
 - **Forward-Forward** (Hinton 2022 — a local goodness objective per layer, no backward pass),
@@ -106,11 +113,12 @@ goals: local, continual, no global gradient.
 
 ## 6. Where it stands, in one line
 
-> From "can a Hebbian net even learn 'is a'?" to **locally-learned, content-based attention with
-> in-context generalization** — the whole transformer skeleton rebuilt from local parts, with
-> only *deep composition under a local rule* left to solve.
+> From "can a Hebbian net even learn 'is a'?" to a **two-layer attention circuit composed at
+> depth under local learning** — the whole transformer skeleton rebuilt from local parts, with
+> only *depth at scale under one unified rule* left to solve.
 
 *Files:* `src/attention-stack-experiment.lisp`, `src/induction-head-experiment.lisp`,
 `src/induction.lisp`, `src/learned-attention-experiment.lisp`,
-`src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`.
+`src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`,
+`src/deep-composition-experiment.lisp`.
 *See also:* `Plan.md` Phase 10, `CLAUDE.md` (component map), `notes/BlockDiagram.tex`.
