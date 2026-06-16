@@ -124,7 +124,6 @@ Run the test suite from `src/` with `make test`.
 * `tutorial/` — a hands-on tutorial.
 * `notes/` — my original, unfiltered notes, an overview of the intended design, and a
   system block diagram (`BlockDiagram.tex` / `.pdf`).
-* `C++/` — the original, incomplete C++ attempt (abandoned; kept for history).
 * `Plan.md` — the design and the phased build plan.
 * `CLAUDE.md` — a map of the codebase and its conventions.
 
