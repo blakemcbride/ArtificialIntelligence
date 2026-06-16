@@ -1,10 +1,11 @@
 % BlockDiagram.tex -- block diagram of the Hebbian AI system (src/, Common Lisp).
 %
 % A continual-learning input -> processing -> output network with no backprop.
-% Knowledge sources feed the Input component; `learn' writes Hebbian updates into a
-% set of memory stores; `respond'/`ask' read those stores through an inference
-% pipeline and the Output component emits a reply -- either retrieved (produce-output)
-% or assembled from facts (Phase 8 generation); `persist' saves/loads it all.
+% Knowledge sources feed the Input component (large files stream in bounded-memory chunks,
+% with model caps to bound growth); `learn' writes Hebbian updates into a set of memory
+% stores; `respond'/`ask' read those stores through an inference pipeline and the Output
+% component emits a reply -- retrieved (produce-output), assembled from facts (generation),
+% or continued in-context (induction); `persist' saves/loads it all.
 %
 % Compile (needs the tikz package, part of any TeX Live install):
 %     pdflatex BlockDiagram.tex      -> BlockDiagram.pdf
@@ -69,6 +70,8 @@
         {Associations\\{\scriptsize input$\rightarrow$output \texttt{:association} edges}};
   \node[store, below=of assoc] (concept)
         {Concept graph \;(\texttt{concepts})\\{\scriptsize generalization, spreading activation}};
+  \node[store, below=of concept] (rel)
+        {Relations \;(\texttt{relations})\\{\scriptsize learned connectors / heads (Phase 9)}};
   \node[store, right=8mm of innet] (attn)
         {Attention head \;(\texttt{attention})\\{\scriptsize copy cues + templates (fast weights)}};
   \node[store, below=of attn] (ops)
@@ -80,17 +83,17 @@
 
   \begin{scope}[on background layer]
     \node[draw, dashed, rounded corners, fill=green!5, inner sep=5mm,
-          fit=(innet)(assoc)(concept)(attn)(ops)(vec)(gen)] (mem) {};
+          fit=(innet)(assoc)(concept)(rel)(attn)(ops)(vec)(gen)] (mem) {};
   \end{scope}
   \node[font=\sffamily\bfseries\footnotesize, anchor=south]
         at (mem.north) {Memory / knowledge stores};
 
   % ------------------------------------------------- respond / inference ---
-  \node[proc, below=34mm of concept] (respond)
+  \node[proc, below=14mm of mem] (respond)
         {\textbf{Respond / Ask} \;(inference)\\[2pt]
-        {\scriptsize pipeline: generation (describe / why)}\\
-        {\scriptsize $\rightarrow$ operation $\rightarrow$ copy $\rightarrow$ compose}\\
-        {\scriptsize $\rightarrow$ associative recall}\\
+        {\scriptsize owns: describe / why (generation),}\\
+        {\scriptsize \phantom{owns: }continue (induction)}\\
+        {\scriptsize else: operation $\rightarrow$ copy $\rightarrow$ compose $\rightarrow$ recall}\\
         {\scriptsize \texttt{ask}: conversation memory + \texttt{infer-answer}}};
 
   % -------------------------------------------------------- output / reply ---
