@@ -633,7 +633,39 @@ phase):
   model, persistence); suite now **172**, green on SBCL. The `why` explanation is the is-a
   chain only; trait-based "because" and higher-order realization are follow-on work.
 
-### Phase 9 — Evaluation & tooling
+### Phase 9 — Learned relation discovery (un-hardcoding "is a")  ✅ done
+The prose reader hardcodes the relationship markers ("is a", "is the Y of", …) and assumes
+the subject/category sit in fixed positions — the one rule-based seam in an otherwise
+non-rule-based design. Phase 9 shows that seam can be **learned**, by Hebbian counting (no
+backprop, continual). Three signals, all just counts (`relations.lisp`, stores in
+`data-structures`, persisted):
+
+- **Connectors** — a membership connector ("is a") links many subjects to few category
+  hubs (high subjects-per-category); a relational connector / verb is ~one-to-one. The gap
+  is the signal; "is"/"a" are never special to the code.
+- **Function words** — frequent tokens that are *rarely a head* (the/a/is) — so a frequent
+  *content* word like "animal" is not mistaken for glue.
+- **Heads** — the real subject/category in a span is the word that most often serves as a
+  head, so modifiers ("small brown") and relative-clause words ("that barks") fall away.
+  **Iterative bootstrapping** (in the PoC) and **online accumulation** (in the live layer)
+  let the model teach itself heads it only ever sees inside complex sentences.
+
+It runs **alongside** the hardcoded patterns, not as a hard replacement: a learned
+recognizer needs accumulated evidence (`*rel-min-support*`), so the hardcoded path is the
+cold-start floor and the learned layer takes over / extends it as more is read. `read-text`
+feeds it (`relations:observe`) and emits learned membership facts into the generation store;
+`relation-of` / `membership-connectors` query it.
+
+- **Done:** ✓ `relations.lisp` (package `relations`) productizes
+  `relation-discovery-experiment.lisp`; wired into `read-text`, persisted, in `system-stats`.
+  On a small batch the learned layer correctly stays below threshold (needs data — the whole
+  premise); on `prose.txt` (694 sentences) it discovers `is a` (5.4), `was a` (4.6),
+  `is an` (4.3), `was an` (3.0) as **membership** and `is in` / `are mountains in` as
+  relational, and parses "the bird that sings sweetly is an animal" → bird / animal. 5 new
+  tests; suite now **181**, green on SBCL. Full removal of the hardcoded patterns (so the
+  learned layer is the *only* path) is the follow-on, once validated at larger scale.
+
+### Phase 10 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network
       growth, weight distribution, prune counts. Extend `dump-dictionary` to show
       association weights, roots, and thresholds.
