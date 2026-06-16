@@ -47,6 +47,7 @@ remains open: composing them at depth with a local rule.
 | **Two learned heads, stacked** | `learned-induction-experiment.lisp` | **Both** heads of the induction circuit are discovered from data by local reward; layer 1's role is rewarded only **through** layer 2's prediction — **credit assignment through depth, locally**. Rediscovers `(o1=1, r2=0)`; 100% held-out incl. novel tokens; one-layer scores 0%. | learns a discrete choice from a small menu |
 | **Learned content weights** | `learned-qk-attention-experiment.lisp` | A content-based head whose **continuous query-key weight matrix `M`** (score = `qᵀ M k`) is learned by a local reward-modulated Hebbian rule. Discovers `M ≈ identity` ("attend to the same token, copy its successor") — a **general** operation that does in-context learning on **tokens never seen in training**. | one layer; single head |
 | **Composition at depth** | `deep-composition-experiment.lisp` | Two layers trained by **local, layer-wise objectives** (no backprop) **compose** into an induction circuit, and **depth is required**: with a position-local value read, a single trained content layer can only return the matched token (0.37), while the 2-layer circuit returns its successor (1.00, incl. novel tokens). Layer 1 learns the previous-token head from its *own* target; layer 2 a continuous content matrix on top. | greedy per-layer (not one unified rule); 2 layers; toy scale |
+| **One unified rule at depth** | `forward-forward-experiment.lisp` | **Forward-Forward**: the *same* local goodness objective at **every** layer, **no backprop, no weight transport**. Trains nets to depth 5; deepest representation stays discriminative; all depths beat a linear model on a nonlinear task. | depth doesn't *improve* a toy task (FF finicky); not yet applied to attention |
 
 All of the above use only local rules — outer-product binding and reward-modulated Hebbian
 updates — and **no backpropagation**.
@@ -79,15 +80,25 @@ target, layer 2 a continuous content matrix on top — that **cooperate**, gener
 tokens, and **require depth** (a single trained content layer fails). Combined with the earlier
 steps, every transformer behavior now has a local-learning realization.
 
-What still remains is **depth at scale under one rule**:
+**Depth under *one unified* rule also has a PoC** (`forward-forward-experiment.lisp`): Hinton's
+**Forward-Forward** — the *same* local objective (raise a "goodness" on correct-label inputs,
+lower it on wrong-label inputs) at **every** layer, **no backward pass, no weight transport**.
+It trains nets up to depth 5, the deepest layer's representation stays discriminative, and all
+depths beat a linear model on a nonlinear task. *Honest finding:* on a task one hidden layer
+already solves, added depth doesn't raise accuracy (naive FF is finicky) — the milestone is the
+**rule** (one local objective, arbitrary depth, no backprop), not a depth win on a toy task.
 
-> Stack **many** cooperating layers (not just two), **multi-head**, trained by a **single
-> unified local rule** (rather than a hand-chosen objective per layer), with content-based
-> continuous weights throughout — at a scale where competence, not just mechanism, shows.
+So both halves now exist in PoC form: cooperating learned layers
+(`deep-composition-experiment.lisp`) and a single unified local rule at depth
+(`forward-forward-experiment.lisp`). What remains is **putting them together at scale**:
 
-The current PoC is *greedy / layer-wise* (each layer given its own local objective) and only two
-layers deep. Turning that into many layers trained jointly by one local rule is the genuine
-research step. The established backprop-free approaches aim exactly here:
+> Train **deep ATTENTION** (the learned-attention / induction layers) by **one unified local
+> rule** (Forward-Forward / predictive-coding style) across **many** layers and **multi-head**,
+> at a scale where *competence*, not just mechanism, shows.
+
+The two lines of work — content-based attention learned locally, and a unified local deep-
+learning rule — have not yet been combined; doing so is the genuine research frontier. The
+established backprop-free approaches are the route:
 
 - **Predictive coding** (local error units, Hebbian-like updates that approximate the gradient),
 - **Forward-Forward** (Hinton 2022 — a local goodness objective per layer, no backward pass),
@@ -113,12 +124,13 @@ goals: local, continual, no global gradient.
 
 ## 6. Where it stands, in one line
 
-> From "can a Hebbian net even learn 'is a'?" to a **two-layer attention circuit composed at
-> depth under local learning** — the whole transformer skeleton rebuilt from local parts, with
-> only *depth at scale under one unified rule* left to solve.
+> From "can a Hebbian net even learn 'is a'?" to **attention composed at depth under local
+> learning** *and* **a single unified local rule training a deep net with no backprop** — every
+> transformer ingredient now has a local-learning PoC; the open frontier is **uniting them**:
+> deep attention trained by one unified local rule, at a scale where competence shows.
 
 *Files:* `src/attention-stack-experiment.lisp`, `src/induction-head-experiment.lisp`,
 `src/induction.lisp`, `src/learned-attention-experiment.lisp`,
 `src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`,
-`src/deep-composition-experiment.lisp`.
+`src/deep-composition-experiment.lisp`, `src/forward-forward-experiment.lisp`.
 *See also:* `Plan.md` Phase 10, `CLAUDE.md` (component map), `notes/BlockDiagram.tex`.
