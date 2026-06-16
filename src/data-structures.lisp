@@ -36,6 +36,10 @@
 	   "*TRANSITIONS*"
 	   "*SENTENCE-STARTS*"
 	   "*FACTS*"
+	   "*REL-LINKS*"
+	   "*REL-HEAD*"
+	   "*REL-FREQ*"
+	   "*REL-SENTENCES*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -63,6 +67,10 @@
 (defparameter *transitions* (make-hash-table :test 'equal)) ; word -> (next-word -> count): sequential model for generation (Phase 8)
 (defparameter *sentence-starts* (make-hash-table :test 'equal)) ; word -> count: how often a word starts a sentence
 (defparameter *facts* (make-hash-table :test 'equal)) ; (subject relation object) -> strength: declarative triples for generation
+(defparameter *rel-links* (make-hash-table :test 'equal)) ; connector -> (hash "subj|cat" -> (subj . cat)): learned relation discovery (Phase 9)
+(defparameter *rel-head* (make-hash-table :test 'equal))  ; word -> times it served as a subject/category head
+(defparameter *rel-freq* (make-hash-table :test 'equal))  ; word -> # sentences it appears in (for function-word discovery)
+(defparameter *rel-sentences* 0)                          ; sentences fed to the relation learner
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -82,7 +90,11 @@
   (setq *facts-learned* 0)
   (setq *transitions* (make-hash-table :test 'equal))
   (setq *sentence-starts* (make-hash-table :test 'equal))
-  (setq *facts* (make-hash-table :test 'equal)))
+  (setq *facts* (make-hash-table :test 'equal))
+  (setq *rel-links* (make-hash-table :test 'equal))
+  (setq *rel-head* (make-hash-table :test 'equal))
+  (setq *rel-freq* (make-hash-table :test 'equal))
+  (setq *rel-sentences* 0))
 
 (defstruct neuron
   "An unnamed neuron"

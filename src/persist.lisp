@@ -105,6 +105,18 @@
   "Flatten *facts* ((subject relation object) -> strength) to an alist."
   (let (acc) (maphash (lambda (k n) (push (cons k n) acc)) *facts*) acc))
 
+(defun rel-links->alist ()
+  "Flatten *rel-links* (connector -> distinct (subj . cat) pairs) to (connector . pairs)."
+  (let (acc)
+    (maphash (lambda (c tab)
+	       (let (pairs) (maphash (lambda (k v) (declare (ignore k)) (push v pairs)) tab)
+		    (push (cons c pairs) acc)))
+	     *rel-links*)
+    acc))
+
+(defun hash->plain-alist (table)
+  (let (acc) (maphash (lambda (k v) (push (cons k v) acc)) table) acc))
+
 (defun hash->id-alist (table)
   "Alist of (key . neuron-id) for a string -> neuron hash table."
   (let (acc)
@@ -130,7 +142,11 @@
 		   :facts-learned *facts-learned*
 		   :transitions (transitions->alist)
 		   :sentence-starts (starts->alist)
-		   :facts (facts->alist))
+		   :facts (facts->alist)
+		   :rel-links (rel-links->alist)
+		   :rel-head (hash->plain-alist *rel-head*)
+		   :rel-freq (hash->plain-alist *rel-freq*)
+		   :rel-sentences *rel-sentences*)
 	     s)
       (terpri s)))
   path)
@@ -199,6 +215,15 @@
       (setf (gethash (car pair) *sentence-starts*) (cdr pair)))
     (dolist (pair (getf data :facts))
       (setf (gethash (car pair) *facts*) (cdr pair)))
+    ;; learned relation discovery (Phase 9)
+    (dolist (pair (getf data :rel-links))
+      (let ((tab (make-hash-table :test 'equal)))
+	(dolist (ab (cdr pair))
+	  (setf (gethash (format nil "~a|~a" (car ab) (cdr ab)) tab) ab))
+	(setf (gethash (car pair) *rel-links*) tab)))
+    (dolist (p (getf data :rel-head)) (setf (gethash (car p) *rel-head*) (cdr p)))
+    (dolist (p (getf data :rel-freq)) (setf (gethash (car p) *rel-freq*) (cdr p)))
+    (setf *rel-sentences* (or (getf data :rel-sentences) 0))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
@@ -251,7 +276,8 @@
 		       :operations       (hash-table-count *op-templates*)
 		       :vector-words     (hash-table-count *cooccur*)
 		       :facts            (hash-table-count *facts*)
-		       :transition-heads (hash-table-count *transitions*))))
+		       :transition-heads (hash-table-count *transitions*)
+		       :relation-connectors (hash-table-count *rel-links*))))
       (format t "~&--- system stats ---~%")
       (loop for (k v) on stats by #'cddr
 	    do (format t "  ~16a ~:d~%" (string-downcase (symbol-name k)) v))

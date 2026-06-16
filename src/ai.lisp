@@ -38,6 +38,8 @@
 
 (require "generation")
 (use-package "generation")
+(require "relations")
+(use-package "relations")
 (require "processing")
 (use-package "processing")
 
@@ -373,12 +375,20 @@
    co-occurrence (unsupervised similarity); declarative sentences also teach a fact when
    EXTRACT is true.  Returns (values sentences-read facts-learned)."
   (let ((sentences (split-sentences text)) (facts 0))
+    ;; pass 1: learn the relation model (Phase 9) from every sentence, so extraction in
+    ;; pass 2 is informed by the whole batch (connectors / heads discovered, not hardcoded).
+    (dolist (s sentences)
+      (let ((words (tokenize s))) (when words (observe words))))
+    ;; pass 2: similarity, transitions, hardcoded triples, supervised facts, + LEARNED facts
     (dolist (s sentences)
       (let ((words (tokenize s)))
 	(when words
 	  (note-cooccurrence words nil)                       ; similarity, always (no teacher)
 	  (note-sequence words)                               ; generation: transition model (Phase 8)
-	  (note-facts words)                                  ; generation: declarative triples
+	  (note-facts words)                                  ; generation: declarative triples (hardcoded)
+	  (multiple-value-bind (subj conn cat cls) (relation-of words) ; learned membership (Phase 9)
+	    (declare (ignore conn))
+	    (when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat)))
 	  (when (and extract (extract-fact words)) (incf facts)))))
     (when verbose (format t "~&read ~d sentences, learned ~d facts~%" (length sentences) facts))
     (values (length sentences) facts)))

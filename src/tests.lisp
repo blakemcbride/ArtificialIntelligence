@@ -22,6 +22,7 @@
 (load "vectors.lisp")
 (load "operations.lisp")
 (load "generation.lisp")
+(load "relations.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
 (load "ai.lisp")   ; loaded last; its use-package forms bring every component's
@@ -762,6 +763,31 @@
            (search "capital is paris"
                    (string-downcase (join-words (respond "tell me about france")))))
     (ignore-errors (delete-file tmp)))
+
+  ;; ===================== Phase 9 -- Learned relation discovery =====================
+  (format t "~%Phase 9 (learned relations) tests~%")
+  (reset)
+  ;; enough "is a"/"is an" links to a shared category hub to cross the membership threshold
+  (read-text "a robin is a bird. an eagle is a bird. an owl is a bird.
+              a dog is an animal. a cat is an animal. a horse is an animal." :verbose nil)
+  (check "relation discovery: 'is a' is LEARNED to be a membership connector (not hardcoded)"
+         (member "is a" (membership-connectors) :test #'string=))
+  (multiple-value-bind (s c cat cls) (relation-of "a sparrow is a bird")
+    (declare (ignore c))
+    (check "relation-of classifies a novel 'X is a Y' as membership"
+           (eq cls :membership))
+    (check "relation-of extracts the subject and category heads"
+           (and (string= s "sparrow") (string= cat "bird"))))
+  (multiple-value-bind (s c cat cls) (relation-of "the bird that sings sweetly is an animal")
+    (declare (ignore c cls))
+    (check "relation-of finds the head THROUGH a relative clause (bird, not sings)"
+           (and (string= s "bird") (string= cat "animal"))))
+  (check "learned relation discovery persists across save / reload"
+         (let ((tmp "rel-temp.kb"))
+           (save-network tmp) (reset)
+           (prog1 (and (load-network tmp)
+                       (member "is a" (membership-connectors) :test #'string=))
+             (ignore-errors (delete-file tmp)))))
 
   (format t "~%~d run, ~d failed -- ~a~%~%"
 	  *tests-run* *tests-failed*
