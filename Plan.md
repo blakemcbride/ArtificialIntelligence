@@ -580,7 +580,60 @@ continual-learning behavior can be regression-checked.
       animal without ever being told.  13 new tests; suite now **142**, green on SBCL.
       See §3.8 / `Future.md`.
 
-### Phase 8 — Evaluation & tooling
+### Phase 8 — Generation (the Output component, for real)  ✅ done
+The system so far can **retrieve** an answer (`respond` walks one stored output chain) and
+**infer** membership (the concept graph), but it cannot **generate** — it can't answer
+"tell me about France" or "why is a cat an animal?" by *assembling a new sentence* from
+what it knows. A standalone proof of concept (`src/generation-experiment.lisp`) confirmed
+the fix and the trade-offs; Phase 8 promotes it into the live system. Generation is two
+pieces, both pure online counting (Hebbian, no backprop, continual — same as every prior
+phase):
+
+- **Content selection — *what* to say.** Which facts mention the topic. Reuse the
+  knowledge already stored: the **concept graph** (`*concept-graph*`) for relations and
+  `*cooccur*` for topical relatedness. No new "knowledge base" — generation reads the same
+  structures inference already grows.
+- **Surface realization — *how* to say it.** Two new, small substrates (`generation.lisp`,
+  globals in `data-structures` so `reset`/persist stay uniform):
+  - **`*facts*`** — clean `(subject relation object)` triples, captured at the *same* parse
+    points that already exist: `extract-fact`'s declarative patterns (prose via `read-text`)
+    and a few high-value question frames from `learn` (`what is the R of S` → `(S R A)`,
+    `who was S`, `is S a C`). The concept graph keeps doing inference; `*facts*` holds the
+    *declarative* form generation needs, so realization is **grounded in a real edge** (no
+    "capital of Latvia" hallucinations).
+  - **`*transitions*`** (word → next-word counts) + **`*sentence-starts*`** — the
+    genuinely missing sequential model, grown from every sentence read/learned. The PoC
+    showed `*cooccur*` alone is order-less; this adds the order, for fluent connective
+    tissue and a fallback when no structured fact exists.
+- **Entry points** (in `respond`, so `main`/`ask` get them for free):
+  - `describe(topic)` → "tell me about X" / "describe X" / "what do you know about X":
+    gather `*facts*` triples mentioning X, render each through a per-relation frame (the
+    slot-fill behind `compose`), and **aggregate several into one short paragraph** —
+    discourse the retrieval path can't produce.
+  - `why(input)` → "why is X a Y": confirm via the concept graph that X is a Y, then cite
+    the strongest **shared states** (the discriminating traits X shares with Y's members)
+    as the reason — "a cat is an animal because it has legs, has fur, …".
+- **Stays Hebbian / continual:** every substrate is an incrementally-bumped count grown at
+  learn/read time; nothing is trained offline; all of it persists (Phase 6) so generation
+  improves continuously as the system reads and is taught.
+- **Honest limits (why this is a real research step, not a finish line):** the realizer is
+  template + bigram, so coherence is short-range and it can only state what was actually
+  read (no inference leaps in the prose itself); quality scales with how much it has read.
+  Higher-order context (the input network's order-preserving frontier) and richer frames
+  are the follow-on work.
+- **Done:** ✓ implemented in `src/generation.lisp` (package `generation`), with the three
+  stores (`*facts*`, `*transitions*`, `*sentence-starts*`) in `data-structures`, fed by
+  `learn` (QA frames) and `read-text` (declaratives), persisted in `persist.lisp`, and
+  wired into `respond` (a recognized request is *owned* by generation — it answers or says
+  "I don't know", never falling through to brittle recall). Out of the box (starter KB),
+  `(respond "tell me about france")` → "France is a country. It is in europe. Its capital is
+  paris."; after `(read-text "A cat is a mammal. A mammal is an animal.")`,
+  `(respond "why is a cat an animal")` → "A cat is an animal because a cat is a mammal, and
+  a mammal is an animal." 9 new tests (describe, why, QA-derived facts, the transition
+  model, persistence); suite now **172**, green on SBCL. The `why` explanation is the is-a
+  chain only; trait-based "because" and higher-order realization are follow-on work.
+
+### Phase 9 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network
       growth, weight distribution, prune counts. Extend `dump-dictionary` to show
       association weights, roots, and thresholds.
