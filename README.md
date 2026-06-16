@@ -43,6 +43,11 @@ The architecture has three major components:
 2. **Processing** — associate inputs with outputs.
 3. **Output** — roughly the inverse of the input component: turn an idea back into words.
 
+For a visual overview of how these fit together — the knowledge sources, the learning and
+inference paths, the memory stores, and persistence — see the block diagram in
+[`notes/BlockDiagram.tex`](notes/BlockDiagram.tex) (a compiled
+[`notes/BlockDiagram.pdf`](notes/BlockDiagram.pdf) is included).
+
 For many years my implementation covered only the input component; I never reached the
 other two, though the input section worked as a first pass.
 
@@ -117,7 +122,8 @@ Run the test suite from `src/` with `make test`.
   broad starter KB auto-learned on first run) and `training-set.txt` (the focused
   generalization demo used by the tests).
 * `tutorial/` — a hands-on tutorial.
-* `notes/` — my original, unfiltered notes and an overview of the intended design.
+* `notes/` — my original, unfiltered notes, an overview of the intended design, and a
+  system block diagram (`BlockDiagram.tex` / `.pdf`).
 * `C++/` — the original, incomplete C++ attempt (abandoned; kept for history).
 * `Plan.md` — the design and the phased build plan.
 * `CLAUDE.md` — a map of the codebase and its conventions.
