@@ -142,3 +142,175 @@ Psychology is the study of the mind.
 Biology is a science. Chemistry is a science. Physics is a science. Astronomy is a science. Geology is a science.
 
 Einstein was a physicist. Newton was a physicist. Copernicus was an astronomer. Kepler was an astronomer. Hawking was a physicist. Faraday was a scientist. Pasteur was a scientist. Darwin was a scientist. Mendel was a scientist. Curie was a scientist. Tesla was an inventor. Edison was an inventor. Bell was an inventor. Gutenberg was an inventor. Lovelace was a mathematician. Turing was a mathematician. Da Vinci was an artist. Picasso was a painter. Van Gogh was a painter. Monet was a painter. Shakespeare was a playwright. Dickens was a writer. Tolstoy was a writer. Twain was a writer. Austen was a writer. Hemingway was a writer. Beethoven was a composer. Mozart was a composer. Bach was a composer. Chopin was a composer. Vivaldi was a composer. Kant was a philosopher. Descartes was a philosopher. Columbus was an explorer. Magellan was an explorer. Polo was an explorer. Cook was an explorer. Da Gama was an explorer. Caesar was a roman general. Lincoln was a president. Washington was a president. Churchill was a prime minister. Gandhi was a leader. Mandela was a leader. Nightingale was a nurse. Wren was an architect.
+Seoul is the capital of South Korea. South Korea is a country in Asia. South Korea is a country.
+Manila is the capital of Philippines. Philippines is a country in Asia. Philippines is a country.
+Kuala Lumpur is the capital of Malaysia. Malaysia is a country in Asia. Malaysia is a country.
+Islamabad is the capital of Pakistan. Pakistan is a country in Asia. Pakistan is a country.
+Dhaka is the capital of Bangladesh. Bangladesh is a country in Asia. Bangladesh is a country.
+Kathmandu is the capital of Nepal. Nepal is a country in Asia. Nepal is a country.
+Phnom Penh is the capital of Cambodia. Cambodia is a country in Asia. Cambodia is a country.
+Algiers is the capital of Algeria. Algeria is a country in Africa. Algeria is a country.
+Tunis is the capital of Tunisia. Tunisia is a country in Africa. Tunisia is a country.
+Tripoli is the capital of Libya. Libya is a country in Africa. Libya is a country.
+Khartoum is the capital of Sudan. Sudan is a country in Africa. Sudan is a country.
+Dodoma is the capital of Tanzania. Tanzania is a country in Africa. Tanzania is a country.
+Kampala is the capital of Uganda. Uganda is a country in Africa. Uganda is a country.
+Harare is the capital of Zimbabwe. Zimbabwe is a country in Africa. Zimbabwe is a country.
+Lusaka is the capital of Zambia. Zambia is a country in Africa. Zambia is a country.
+Dakar is the capital of Senegal. Senegal is a country in Africa. Senegal is a country.
+Luanda is the capital of Angola. Angola is a country in Africa. Angola is a country.
+Zagreb is the capital of Croatia. Croatia is a country in Europe. Croatia is a country.
+Belgrade is the capital of Serbia. Serbia is a country in Europe. Serbia is a country.
+Sofia is the capital of Bulgaria. Bulgaria is a country in Europe. Bulgaria is a country.
+Bratislava is the capital of Slovakia. Slovakia is a country in Europe. Slovakia is a country.
+Vilnius is the capital of Lithuania. Lithuania is a country in Europe. Lithuania is a country.
+Riga is the capital of Latvia. Latvia is a country in Europe. Latvia is a country.
+Tallinn is the capital of Estonia. Estonia is a country in Europe. Estonia is a country.
+Edinburgh is the capital of Scotland. Scotland is a country in Europe. Scotland is a country.
+Cardiff is the capital of Wales. Wales is a country in Europe. Wales is a country.
+Quito is the capital of Ecuador. Ecuador is a country in South America. Ecuador is a country.
+Montevideo is the capital of Uruguay. Uruguay is a country in South America. Uruguay is a country.
+San Jose is the capital of Costa Rica. Costa Rica is a country in North America. Costa Rica is a country.
+Kingston is the capital of Jamaica. Jamaica is a country in North America. Jamaica is a country.
+
+French is the language of France.
+Spanish is the language of Spain.
+German is the language of Germany.
+Italian is the language of Italy.
+Portuguese is the language of Portugal.
+Japanese is the language of Japan.
+Russian is the language of Russia.
+Greek is the language of Greece.
+Dutch is the language of The Netherlands.
+Swedish is the language of Sweden.
+Polish is the language of Poland.
+Korean is the language of South Korea.
+Turkish is the language of Turkey.
+English is the language of England.
+Chinese is the language of China.
+
+The Euphrates is a river in Asia.
+The Tigris is a river in Asia.
+The Indus is a river in Asia.
+The Niger is a river in Africa.
+The Zambezi is a river in Africa.
+The Murray is a river in Australia.
+The Colorado is a river in North America.
+The Loire is a river in Europe.
+The Po is a river in Europe.
+The Elbe is a river in Europe.
+Lake Victoria is a lake. Lake Victoria is in Africa.
+Lake Superior is a lake. Lake Superior is in North America.
+Lake Baikal is a lake. Lake Baikal is in Asia.
+Lake Michigan is a lake. Lake Michigan is in North America.
+The pyrenees are mountains in Europe.
+The urals are mountains in Europe.
+The appalachians are mountains in North America.
+The carpathians are mountains in Europe.
+The atlas mountains are mountains in Africa.
+
+The louvre is in France.
+Notre dame is in France.
+The brandenburg gate is in Germany.
+The forbidden city is in China.
+Angkor wat is in Cambodia.
+The golden gate bridge is in The United States.
+The empire state building is in The United States.
+The kremlin is in Russia.
+The leaning tower of pisa is in Italy.
+Cape Town is a city in South Africa.
+Melbourne is a city in Australia.
+Vancouver is a city in Canada.
+Montreal is a city in Canada.
+San Francisco is a city in The United States.
+Boston is a city in The United States.
+Miami is a city in The United States.
+Hamburg is a city in Germany.
+Frankfurt is a city in Germany.
+Milan is a city in Italy.
+Venice is a city in Italy.
+Florence is a city in Italy.
+Lyon is a city in France.
+Marseille is a city in France.
+Seville is a city in Spain.
+Porto is a city in Portugal.
+Zurich is a city in Switzerland.
+Geneva is a city in Switzerland.
+
+Max Planck was a physicist. Niels Bohr was a physicist. Enrico Fermi was a physicist.
+Richard Feynman was a physicist. Dmitri Mendeleev was a chemist. Alexander Fleming was a scientist.
+Edwin Hubble was an astronomer. Carl Sagan was an astronomer. Jane Goodall was a scientist.
+James Watson was a scientist. Carl Gauss was a mathematician. Leonhard Euler was a mathematician.
+Blaise Pascal was a mathematician. Emmy Noether was a mathematician. James Watt was an engineer.
+Guglielmo Marconi was an inventor. Karl Benz was an inventor. Eli Whitney was an inventor.
+Victor Hugo was a writer. Fyodor Dostoevsky was a writer. Oscar Wilde was a writer.
+Edgar Allan Poe was a writer. George Orwell was a writer. Agatha Christie was a writer.
+Virginia Woolf was a writer. Emily Dickinson was a poet. Maya Angelou was a poet.
+Franz Schubert was a composer. Johannes Brahms was a composer. Pyotr Tchaikovsky was a composer.
+Richard Wagner was a composer. George Handel was a composer. Joseph Haydn was a composer.
+Salvador Dali was a painter. Henri Matisse was a painter. Edvard Munch was a painter.
+Frida Kahlo was a painter. Auguste Rodin was a sculptor. Friedrich Nietzsche was a philosopher.
+John Locke was a philosopher. David Hume was a philosopher. Voltaire was a philosopher.
+Karl Marx was a philosopher. Thomas Jefferson was a president. Franklin Roosevelt was a president.
+Theodore Roosevelt was a president. John Adams was a president. Charlemagne was a king.
+Genghis Khan was a conqueror. Simon Bolivar was a leader. Martin Luther King was a leader.
+Roald Amundsen was an explorer. Ernest Shackleton was an explorer. Neil Armstrong was an astronaut.
+Yuri Gagarin was an astronaut. Amelia Earhart was a pilot.
+Planck was a physicist. Bohr was a physicist. Fermi was a physicist. Feynman was a physicist. Mendeleev was a chemist.
+Fleming was a scientist. Hubble was an astronomer. Sagan was an astronomer. Goodall was a scientist. Watson was a scientist.
+Gauss was a mathematician. Euler was a mathematician. Pascal was a mathematician. Noether was a mathematician. Watt was an engineer.
+Marconi was an inventor. Benz was an inventor. Whitney was an inventor. Hugo was a writer. Dostoevsky was a writer.
+Wilde was a writer. Poe was a writer. Orwell was a writer. Christie was a writer. Woolf was a writer.
+Dickinson was a poet. Angelou was a poet. Schubert was a composer. Brahms was a composer. Tchaikovsky was a composer.
+Wagner was a composer. Handel was a composer. Haydn was a composer. Dali was a painter. Matisse was a painter.
+Munch was a painter. Kahlo was a painter. Rodin was a sculptor. Nietzsche was a philosopher. Locke was a philosopher.
+Hume was a philosopher. Marx was a philosopher. Jefferson was a president. Roosevelt was a president.
+Adams was a president. Khan was a conqueror. Bolivar was a leader. King was a leader. Amundsen was an explorer.
+Shackleton was an explorer. Armstrong was an astronaut. Gagarin was an astronaut. Earhart was a pilot.
+
+Alexander Graham Bell was the inventor of the telephone. Thomas Edison was the inventor of the phonograph. Alexander Fleming was the discoverer of penicillin. William Shakespeare was the author of hamlet. Charles Darwin was the author of the origin of species. George Washington was the first president of the United States.
+
+carbon is an element.
+hydrogen is an element.
+oxygen is an element.
+nitrogen is an element.
+helium is an element.
+iron is an element.
+gold is an element.
+silver is an element.
+sodium is an element.
+calcium is an element.
+helium is a gas.
+neon is a gas.
+argon is a gas.
+sodium is a metal.
+calcium is a metal.
+zinc is a metal.
+lead is a metal.
+tin is a metal.
+nickel is a metal.
+the liver is an organ.
+the kidneys are organs.
+the stomach is an organ.
+the skin is an organ.
+A whale is a mammal. A dolphin is a mammal. A bat is a mammal. A shark is a fish. A frog is an amphibian. A snake is a reptile. A spider is an arachnid. An eagle is a bird.
+Geography is the study of the earth.
+Anatomy is the study of the body.
+Economics is the study of money.
+Ecology is the study of ecosystems.
+Physics is the study of energy.
+Genetics is the study of genes.
+Ice is the solid form of water. Steam is the gas form of water.
+tennis is a sport.
+basketball is a sport.
+swimming is a sport.
+boxing is a sport.
+cricket is a sport.
+golf is a sport.
+baseball is a sport.
+hockey is a sport.
+the violin is an instrument.
+the trumpet is an instrument.
+the flute is an instrument.
+the cello is an instrument.
+the harp is an instrument.
