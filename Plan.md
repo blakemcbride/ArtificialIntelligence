@@ -662,8 +662,11 @@ feeds it (`relations:observe`) and emits learned membership facts into the gener
   premise); on `prose.txt` (694 sentences) it discovers `is a` (5.4), `was a` (4.6),
   `is an` (4.3), `was an` (3.0) as **membership** and `is in` / `are mountains in` as
   relational, and parses "the bird that sings sweetly is an animal" → bird / animal. 5 new
-  tests; suite now **181**, green on SBCL. Full removal of the hardcoded patterns (so the
-  learned layer is the *only* path) is the follow-on, once validated at larger scale.
+  tests; suite now **181**, green on SBCL. The floor-plus-learned arrangement is
+  **intentional, not a stepping stone**: cold-start needs a bootstrap before any statistics
+  exist (and the hardcoded patterns also cover the KB Q→A path and relational/attribute
+  facts the learned layer doesn't), so the hardcoded patterns are kept as the floor while
+  the learned layer takes over and extends coverage as more is read.
 
 ### Phase 10 — Evaluation & tooling
 - [ ] Metrics over a held-out teaching script: response accuracy over time, network
