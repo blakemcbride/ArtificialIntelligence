@@ -47,19 +47,6 @@
    (or nil) through unchanged.  This lets the public API accept either form."
   (if (stringp x) (tokenize x) x))
 
-(defun create-line ()
-  "Returns a list of named neurons"
-  (setq *input-line* "")
-  (setq *current-position* 0)
-  (let (res)
-    (loop
-       (let ((word (getword)))
-	 (cond ((not word)
-		(return nil))
-	       ((string-eol word)
-		(return (nreverse res))))
-	 (add res (intern-word word))))))
-
 (defun isspace (c)
   (or (eql c #\space)
       (eql c #\tab)
@@ -100,3 +87,16 @@
 		     (isspace (char *input-line* *current-position*))) do
 	 (incf *current-position*))
     (coerce (nreverse res) 'string)))
+
+(defun create-line ()
+  "Returns a list of named neurons"
+  (setq *input-line* "")
+  (setq *current-position* 0)
+  (let (res)
+    (loop
+       (let ((word (getword)))
+	 (cond ((not word)
+		(return nil))
+	       ((string-eol word)
+		(return (nreverse res))))
+	 (add res (intern-word word))))))
