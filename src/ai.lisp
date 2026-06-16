@@ -58,6 +58,101 @@
 (declaim (ftype function read-text-file))    ; defined below
 (declaim (ftype function load-knowledge))    ; defined below; the .read command calls it
 
+;;; --- Bounded-model config (so an arbitrarily large corpus fits in fixed memory) -------
+;;; The FILE streams in constant memory (stream-chunks); these caps bound the LEARNED model.
+;;; All default NIL = unlimited (original behavior).  View/change them live with .config / .set.
+(defparameter *read-max-mb*  nil "Stop a .read after about this many MB ingested (NIL = all).")
+(defparameter *read-chunk*   262144 "Characters read per chunk while streaming a file.")
+(defparameter *read-flush*   4194304 "Force-process a delimiter-free buffer once it exceeds this.")
+(defparameter *read-extract* t
+  "When NIL, .read does only the lightweight statistical learners (co-occurrence, transitions,
+   relations, facts) and SKIPS the heavy supervised path (extract-fact -> build-structure /
+   concept graph / associations).  Turn off for bulk corpus ingestion -- far less memory.")
+(defparameter *max-vocab*       nil "Cap on distinct words in *dictionary* (the extract path).")
+(defparameter *max-cooccur*     nil "Cap on co-occurrence head words (pruned to top mass).")
+(defparameter *max-transitions* nil "Cap on transition head words (pruned to top mass).")
+(defparameter *max-facts*       nil "Cap on generation facts (pruned to highest-count).")
+(defparameter *prune-every*     5000 "Enforce caps once per this many learned sentences.")
+(defvar *learned-since-prune* 0)
+
+(defparameter *tunables*
+  '(("read-max-mb"     . *read-max-mb*)     ("read-extract"    . *read-extract*)
+    ("max-vocab"       . *max-vocab*)       ("max-cooccur"     . *max-cooccur*)
+    ("max-transitions" . *max-transitions*) ("max-facts"       . *max-facts*)
+    ("prune-every"     . *prune-every*))
+  "Live-tunable parameters, exposed by .config / .set (name -> special variable).")
+
+;;; --- pruning (keep only the strongest entries when a store is over its cap) ------------
+(defun prune-flat (table cap)
+  "Keep only the CAP highest-valued entries of TABLE (key -> number)."
+  (when (and cap (> (hash-table-count table) cap))
+    (let (pairs)
+      (maphash (lambda (k v) (push (cons k v) pairs)) table)
+      (setf pairs (sort pairs #'> :key #'cdr))
+      (clrhash table)
+      (loop for cell in pairs repeat cap do (setf (gethash (car cell) table) (cdr cell))))))
+
+(defun nested-mass (inner) (let ((s 0)) (maphash (lambda (k v) (declare (ignore k)) (incf s v)) inner) s))
+
+(defun prune-nested (table cap inner-cap)
+  "Keep the CAP head words with the largest total mass; prune each inner table to INNER-CAP."
+  (when (and cap (> (hash-table-count table) cap))
+    (let (pairs)
+      (maphash (lambda (k inner) (push (cons k (nested-mass inner)) pairs)) table)
+      (setf pairs (sort pairs #'> :key #'cdr))
+      (let ((keep (make-hash-table :test 'equal)) dead)
+	(loop for cell in pairs repeat cap do (setf (gethash (car cell) keep) t))
+	(maphash (lambda (k v) (declare (ignore v)) (unless (gethash k keep) (push k dead))) table)
+	(dolist (k dead) (remhash k table)))))
+  (when inner-cap (maphash (lambda (k inner) (declare (ignore k)) (prune-flat inner inner-cap)) table)))
+
+(defun enforce-caps ()
+  "Prune every capped store down to its cap (called periodically while learning)."
+  (prune-nested *cooccur* *max-cooccur* 128)
+  (prune-nested *transitions* *max-transitions* 64)
+  (prune-flat *facts* *max-facts*)
+  ;; pruning *cooccur* invalidates the derived vector cache
+  (setq *vcache* (make-hash-table :test 'equal) *vec-mean* nil))
+
+(defun cap-tokens (words)
+  "Drop words that would grow *dictionary* past *max-vocab* (keeps the extract path bounded)."
+  (if (and *max-vocab* (>= (hash-table-count *dictionary*) *max-vocab*))
+      (remove-if-not (lambda (w) (gethash w *dictionary*)) words)
+      words))
+
+;;; --- .config / .set : view and change the tunables live -------------------------------
+(defun show-config ()
+  (format t "~&Tunable parameters (.set NAME VALUE to change; off/nil = unlimited):~%")
+  (dolist (tn *tunables*)
+    (format t "  ~16a ~a~%" (car tn) (symbol-value (cdr tn))))
+  (format t "Current model sizes:~%")
+  (format t "  ~16a ~:d~%" "vocabulary" (hash-table-count *dictionary*))
+  (format t "  ~16a ~:d~%" "cooccur-words" (hash-table-count *cooccur*))
+  (format t "  ~16a ~:d~%" "transition-heads" (hash-table-count *transitions*))
+  (format t "  ~16a ~:d~%" "facts" (hash-table-count *facts*)))
+
+(defun parse-value (s)
+  "Parse a .set value: off/nil/none/unlimited -> NIL; on/t/yes -> T; digits -> integer; else string."
+  (let ((d (string-downcase s)))
+    (cond ((member d '("nil" "off" "none" "unlimited" "false") :test #'string=) nil)
+	  ((member d '("t" "on" "yes" "true") :test #'string=) t)
+	  ((every #'digit-char-p s) (parse-integer s))
+	  (t s))))
+
+(defun set-tunable (arg)
+  "Handle `.set NAME VALUE': change a tunable, then re-enforce caps."
+  (let* ((sp (position #\Space arg))
+	 (name (string-downcase (string-trim " " (if sp (subseq arg 0 sp) arg))))
+	 (valstr (and sp (string-trim " " (subseq arg sp))))
+	 (tn (assoc name *tunables* :test #'string=)))
+    (cond
+      ((null tn) (format t "  (unknown parameter ~s -- type .config to list them)~%" name))
+      ((or (null valstr) (zerop (length valstr)))
+       (format t "  ~a = ~a~%" name (symbol-value (cdr tn))))   ; no value -> just show it
+      (t (setf (symbol-value (cdr tn)) (parse-value valstr))
+	 (format t "  ~a = ~a~%" name (symbol-value (cdr tn)))
+	 (enforce-caps)))))
+
 (defun words-of (neurons)
   "The word strings of a create-line result, in order."
   (mapcar #'named-neuron-name neurons))
@@ -78,6 +173,8 @@
   (format t "  .save FILE     save to FILE and make it the active file~%")
   (format t "  .load FILE     clear, then load FILE and make it the active file~%")
   (format t "  .read FILE     learn from FILE (auto-detects => pairs and/or prose)~%")
+  (format t "  .config        show tunable parameters (model caps) and current sizes~%")
+  (format t "  .set NAME VAL  change a parameter (e.g. .set max-cooccur 200000; off = unlimited)~%")
   (format t "  .quit          save and exit                       (also .exit)~%")
   (format t "The active file is ~a; it is loaded on start and auto-saved on exit.~%"
 	  *save-file*))
@@ -122,8 +219,10 @@
   "Execute a leading-period loop command.  Return :quit to stop the loop, else NIL."
   (cond
     ((or (string= name "quit") (string= name "exit")) :quit)
-    ((string= name "help")  (print-help)        nil)
-    ((string= name "stats") (system-stats)      nil)
+    ((string= name "help")   (print-help)        nil)
+    ((string= name "stats")  (system-stats)      nil)
+    ((string= name "config") (show-config)       nil)
+    ((string= name "set")    (set-tunable arg)   nil)
     ((string= name "list")  (list-kb-files arg) nil)
     ((string= name "save")
      (cond ((zerop (length arg)) (format t "  (.save needs a filename, e.g. .save my.kb)~%"))
@@ -371,13 +470,7 @@
 	    (t (learn (format nil "~a ~a ~a" cop (join-words before) (join-words after)) "yes")
 	       t)))))))
 
-(defparameter *read-max-mb* nil
-  "If non-NIL, .read / read-text-file / load-knowledge stop after about this many megabytes.
-   The file ALWAYS streams in bounded-memory chunks; this caps how much is INGESTED, because
-   the learned model (vocabulary, co-occurrence, ...) still grows with what is read.  NIL =
-   read the whole file.")
-(defparameter *read-chunk* 262144 "Characters read per chunk while streaming a file.")
-(defparameter *read-flush* 4194304 "Force-process a delimiter-free buffer once it exceeds this.")
+;; (read/cap parameters and pruning are defined near the top, with the .config/.set machinery)
 
 (defun split-lines (text)
   "Split TEXT on newlines into a list of lines (delimiters dropped)."
@@ -387,20 +480,25 @@
     (push (subseq text start n) res)
     (nreverse res)))
 
-(defun process-sentence (words &optional (extract t))
-  "Learn from one already-tokenized sentence in a single online pass.  Returns 1 if a fact
-   was extracted, else 0."
-  (when words
-    (observe words)                  ; relations: online connector/head discovery (Phase 9)
-    (note-cooccurrence words nil)    ; distributed-vector similarity
-    (note-sequence words)            ; generation transition model (Phase 8)
-    (note-facts words)               ; generation declarative triples (hardcoded)
-    (multiple-value-bind (subj conn cat cls) (relation-of words)
-      (declare (ignore conn))
-      (when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat))))
-  (if (and words extract (extract-fact words)) 1 0))
+(defun process-sentence (words &optional (extract *read-extract*))
+  "Learn from one already-tokenized sentence in a single online pass.  Honors the model caps:
+   the heavy extract path is bounded by *max-vocab*, and capped stores are pruned every
+   *prune-every* sentences.  Returns 1 if a fact was extracted, else 0."
+  (let ((nf 0))
+    (when words
+      (observe words)                  ; relations: online connector/head discovery (Phase 9)
+      (note-cooccurrence words nil)    ; distributed-vector similarity
+      (note-sequence words)            ; generation transition model (Phase 8)
+      (note-facts words)               ; generation declarative triples (hardcoded)
+      (multiple-value-bind (subj conn cat cls) (relation-of words)
+	(declare (ignore conn))
+	(when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat)))
+      (when (and extract (extract-fact (cap-tokens words))) (setf nf 1)))   ; vocab-capped
+    (when (>= (incf *learned-since-prune*) *prune-every*)
+      (setf *learned-since-prune* 0) (enforce-caps))
+    nf))
 
-(defun read-text (text &key (extract t) (verbose t))
+(defun read-text (text &key (extract *read-extract*) (verbose t))
   "Learn from raw TEXT (one or more sentences) in a single online pass.  Returns (values
    sentences-read facts-learned)."
   (let ((ns 0) (nf 0))
@@ -425,7 +523,7 @@
 	  (when (and max-bytes (>= bytes max-bytes)) (return))))
       (funcall drain pending t))))
 
-(defun read-text-file (path &key (extract t) (verbose t) (max-mb *read-max-mb*))
+(defun read-text-file (path &key (extract *read-extract*) (verbose t) (max-mb *read-max-mb*))
   "Stream raw text from PATH (bounded memory) and learn from it as prose.  Splits on sentence
    terminators across the whole stream (newlines are whitespace), so it never loads the file
    in full -- safe for very large corpora.  Returns (values sentences facts)."

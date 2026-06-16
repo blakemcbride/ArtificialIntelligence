@@ -778,6 +778,19 @@
                   (equal '("reykjavik") (ask "what is the capital of iceland"))))
     (ignore-errors (delete-file tmp)))
 
+  ;; ===================== Model caps + .config / .set =====================
+  (format t "~%Model-cap tests~%")
+  (reset)
+  (check ".set changes a tunable"
+         (progn (set-tunable "max-cooccur 1234") (eql 1234 *max-cooccur*)))
+  (check ".set off resets a tunable to unlimited"
+         (progn (set-tunable "max-cooccur off") (null *max-cooccur*)))
+  (check "co-occurrence is pruned to its cap while learning"
+         (let ((*prune-every* 1) (*max-cooccur* 3))
+           (reset)
+           (read-text "alpha beta gamma. delta epsilon zeta. eta theta iota. mu nu xi." :verbose nil)
+           (<= (hash-table-count *cooccur*) 3)))
+
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")
   (reset)

@@ -73,6 +73,8 @@ Commands start with a period and are typed alone on a line:
   .save FILE     save to FILE and make it the active file
   .load FILE     clear, then load FILE and make it the active file
   .read FILE     learn from FILE (auto-detects => pairs and/or prose)
+  .config        show tunable parameters (model caps) and current sizes
+  .set NAME VAL  change a parameter (e.g. .set max-cooccur 200000; off = unlimited)
   .quit          save and exit                       (also .exit)
 The active file is auto-save.kb; it is loaded on start and auto-saved on exit.
 
@@ -161,6 +163,21 @@ non-comment line is read as prose — so one file can freely mix both:
 ```
 
 The `.read FILE` loop command uses `load-knowledge`, so it handles either or mixed content.
+
+**Very large corpora.** The file is read in bounded-memory **chunks** — it is never loaded
+whole — so even a 100 GB+ text streams fine. What still grows is the *learned model*
+(vocabulary, co-occurrence, …), so for huge corpora set **caps** with `.config` / `.set`:
+
+```text
+input> .config                     ; see the tunables and current model sizes
+input> .set read-extract off       ; bulk mode: skip the heavy supervised path
+input> .set max-cooccur 300000     ; cap the biggest store (off = unlimited)
+input> .set read-max-mb 1000       ; ingest about 1 GB this pass, then .save
+input> .read fineweb-edu.txt
+```
+
+When a store exceeds its cap it is pruned to its strongest entries, so the model stays within
+fixed memory no matter how much you read.
 
 You can also teach a single pair from code — `learn` takes an input and an answer (each a
 sentence string or a word list) and returns what the system *would* have answered *before*
@@ -471,6 +488,7 @@ human-readable s-expression — you can peek at it.
 | Inside `(main)`: save / load / read a file | `.save f.kb` / `.load f.kb` / `.read prose.txt` |
 | Inside `(main)`: list saved knowledge bases | `.list` / `.list DIR` |
 | Inside `(main)`: stats / help / quit | `.stats` / `.help` / `.quit` |
+| Inside `(main)`: view / change model caps | `.config` / `.set max-cooccur 200000` |
 
 Inputs and answers can be plain **sentence strings** — the system tokenizes them
 (lowercases, drops a terminal `.` `!` `?`, but keeps an embedded period like in `file.kb`) —
