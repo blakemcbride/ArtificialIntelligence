@@ -146,7 +146,8 @@
 		   :rel-links (rel-links->alist)
 		   :rel-head (hash->plain-alist *rel-head*)
 		   :rel-freq (hash->plain-alist *rel-freq*)
-		   :rel-sentences *rel-sentences*)
+		   :rel-sentences *rel-sentences*
+		   :read-offsets (hash->plain-alist *read-offsets*))
 	     s)
       (terpri s)))
   path)
@@ -224,6 +225,7 @@
     (dolist (p (getf data :rel-head)) (setf (gethash (car p) *rel-head*) (cdr p)))
     (dolist (p (getf data :rel-freq)) (setf (gethash (car p) *rel-freq*) (cdr p)))
     (setf *rel-sentences* (or (getf data :rel-sentences) 0))
+    (dolist (p (getf data :read-offsets)) (setf (gethash (car p) *read-offsets*) (cdr p)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))

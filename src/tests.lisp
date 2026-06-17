@@ -791,6 +791,26 @@
            (read-text "alpha beta gamma. delta epsilon zeta. eta theta iota. mu nu xi." :verbose nil)
            (<= (hash-table-count *cooccur*) 3)))
 
+  ;; ===================== Resume: .read picks up where it left off =====================
+  (format t "~%Resume / rewind tests~%")
+  (reset)
+  (let ((tmp "resume-temp.txt"))
+    (with-open-file (s tmp :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (format s "Reykjavik is the capital of Iceland. Quito is a city.~%"))
+    (read-text-file tmp :verbose nil)
+    (check "a fully-read file is not re-read on the next .read"
+           (= 0 (nth-value 0 (read-text-file tmp :verbose nil))))
+    (check "the read offset persists across save / reload"
+           (let ((kb "resume-off.kb"))
+             (save-network kb) (reset)
+             (prog1 (and (load-network kb)
+                         (= 0 (nth-value 0 (read-text-file tmp :verbose nil))))  ; still consumed
+               (ignore-errors (delete-file kb)))))
+    (rewind-file tmp)
+    (check "rewind makes the file re-readable from the start"
+           (> (nth-value 0 (read-text-file tmp :verbose nil)) 0))
+    (ignore-errors (delete-file tmp)))
+
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")
   (reset)

@@ -40,6 +40,7 @@
 	   "*REL-HEAD*"
 	   "*REL-FREQ*"
 	   "*REL-SENTENCES*"
+	   "*READ-OFFSETS*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -71,6 +72,7 @@
 (defparameter *rel-head* (make-hash-table :test 'equal))  ; word -> times it served as a subject/category head
 (defparameter *rel-freq* (make-hash-table :test 'equal))  ; word -> # sentences it appears in (for function-word discovery)
 (defparameter *rel-sentences* 0)                          ; sentences fed to the relation learner
+(defparameter *read-offsets* (make-hash-table :test 'equal)) ; file path -> byte offset consumed (resume .read in slices)
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -94,7 +96,8 @@
   (setq *rel-links* (make-hash-table :test 'equal))
   (setq *rel-head* (make-hash-table :test 'equal))
   (setq *rel-freq* (make-hash-table :test 'equal))
-  (setq *rel-sentences* 0))
+  (setq *rel-sentences* 0)
+  (setq *read-offsets* (make-hash-table :test 'equal)))
 
 (defstruct neuron
   "An unnamed neuron"

@@ -72,7 +72,8 @@ Commands start with a period and are typed alone on a line:
   .list [DIR]    list the .kb files in DIR (default: current directory)
   .save FILE     save to FILE and make it the active file
   .load FILE     clear, then load FILE and make it the active file
-  .read FILE     learn from FILE (auto-detects => pairs and/or prose)
+  .read FILE     learn from FILE (resumes where it left off; honors read-max-mb)
+  .rewind FILE   forget how far FILE was read (next .read starts over)
   .config        show tunable parameters (model caps) and current sizes
   .set NAME VAL  change a parameter (e.g. .set max-cooccur 200000; off = unlimited)
   .quit          save and exit                       (also .exit)
@@ -169,15 +170,24 @@ whole — so even a 100 GB+ text streams fine. What still grows is the *learned 
 (vocabulary, co-occurrence, …), so for huge corpora set **caps** with `.config` / `.set`:
 
 ```text
-input> .config                     ; see the tunables and current model sizes
 input> .set read-extract off       ; bulk mode: skip the heavy supervised path
 input> .set max-cooccur 300000     ; cap the biggest store (off = unlimited)
-input> .set read-max-mb 1000       ; ingest about 1 GB this pass, then .save
-input> .read fineweb-edu.txt
+input> .set read-max-mb 1000       ; read ~1 GB per .read
+input> .read fineweb-edu.txt       ; ingests the first ~1 GB
+input> .config                     ; watch the sizes plateau at the caps
+input> .read fineweb-edu.txt       ; RESUMES -- the NEXT ~1 GB, automatically
 ```
 
-When a store exceeds its cap it is pruned to its strongest entries, so the model stays within
-fixed memory no matter how much you read.
+`.read` **resumes where it last stopped** (a per-file offset, saved in the `.kb`), so just
+call `.read FILE` again to get the next slice — even after a `.save`/`.quit`/restart. When a
+store exceeds its cap it is pruned to its strongest entries, so the model stays within fixed
+memory no matter how much you read. (`.rewind FILE` starts that file over from the beginning.)
+
+A robust slice-at-a-time loop: `.read` → `.save` → repeat, so a crash never costs a whole pass.
+
+**Heap size matters too.** SBCL's default Lisp heap is small (~1 GB). For large ingestion start
+it with a bigger heap, e.g. `sbcl --dynamic-space-size 16384` (16 GB). The caps bound the
+model; the heap is the absolute ceiling — you need both.
 
 You can also teach a single pair from code — `learn` takes an input and an answer (each a
 sentence string or a word list) and returns what the system *would* have answered *before*
@@ -486,6 +496,7 @@ human-readable s-expression — you can peek at it.
 | Print the internal neuron tree | `(dump-dictionary)` |
 | See system stats (facts, neurons, …) | `(system-stats)` |
 | Inside `(main)`: save / load / read a file | `.save f.kb` / `.load f.kb` / `.read prose.txt` |
+| Inside `(main)`: read a huge file in slices | `.read big.txt` (resumes) / `.rewind big.txt` |
 | Inside `(main)`: list saved knowledge bases | `.list` / `.list DIR` |
 | Inside `(main)`: stats / help / quit | `.stats` / `.help` / `.quit` |
 | Inside `(main)`: view / change model caps | `.config` / `.set max-cooccur 200000` |

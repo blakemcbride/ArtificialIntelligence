@@ -120,6 +120,22 @@
       (remove-if-not (lambda (w) (gethash w *dictionary*)) words)
       words))
 
+;;; --- resume support: .read picks up where it left off (per-file byte offset, persisted) ---
+(defun offset-key (path)
+  "Stable key for *read-offsets* (absolute namestring when resolvable, else the path)."
+  (or (ignore-errors (namestring (truename path))) (namestring path)))
+
+(defun rewind-file (path)
+  "Forget how far PATH has been read, so the next .read starts again from the beginning."
+  (remhash (offset-key path) *read-offsets*)
+  (format t "  (~a: rewound -- the next .read starts from the beginning)~%" path))
+
+(defun report-slice (path start end eofp)
+  (cond ((eql start end)
+	 (format t "  (~a: already fully read -- .rewind ~a to read it again)~%" path path))
+	(eofp (format t "  (~a: reached end of file)~%" path))
+	(t (format t "  (~a: read bytes ~:d..~:d; .read it again for the next slice)~%" path start end))))
+
 ;;; --- .config / .set : view and change the tunables live -------------------------------
 (defun show-config ()
   (format t "~&Tunable parameters (.set NAME VALUE to change; off/nil = unlimited):~%")
@@ -172,7 +188,8 @@
   (format t "  .list [DIR]    list the .kb files in DIR (default: current directory)~%")
   (format t "  .save FILE     save to FILE and make it the active file~%")
   (format t "  .load FILE     clear, then load FILE and make it the active file~%")
-  (format t "  .read FILE     learn from FILE (auto-detects => pairs and/or prose)~%")
+  (format t "  .read FILE     learn from FILE (resumes where it left off; honors read-max-mb)~%")
+  (format t "  .rewind FILE   forget how far FILE was read (next .read starts over)~%")
   (format t "  .config        show tunable parameters (model caps) and current sizes~%")
   (format t "  .set NAME VAL  change a parameter (e.g. .set max-cooccur 200000; off = unlimited)~%")
   (format t "  .quit          save and exit                       (also .exit)~%")
@@ -240,8 +257,11 @@
      nil)
     ((string= name "read")
      (cond ((zerop (length arg)) (format t "  (.read needs a filename)~%"))
-	   ((probe-file arg)      (load-knowledge arg))   ; auto-routes => pairs and prose
+	   ((probe-file arg)      (load-knowledge arg))   ; resumes from where it left off
 	   (t (format t "  (could not read ~a -- file not found)~%" arg)))
+     nil)
+    ((string= name "rewind")
+     (if (zerop (length arg)) (format t "  (.rewind needs a filename)~%") (rewind-file arg))
      nil)
     (t (format t "  (unknown command .~a -- type .help for the command list)~%" name)
        nil)))
@@ -507,40 +527,47 @@
     (when verbose (format t "~&read ~:d sentences, learned ~:d facts~%" ns nf))
     (values ns nf)))
 
-(defun stream-chunks (path drain &key (max-bytes nil) (verbose t))
-  "Stream PATH in bounded-memory chunks (the whole file is never held in memory; UTF-8 safe).
-   DRAIN is called as (drain buffer) during streaming -- it processes the complete units in
-   BUFFER and returns the unprocessed tail -- and once as (drain tail t) at end of file."
+(defun stream-chunks (path drain &key (start 0) (max-bytes nil) (verbose t))
+  "Stream PATH in bounded-memory chunks (the whole file is never held in memory; UTF-8 safe),
+   beginning at file position START.  DRAIN is called as (drain buffer) during streaming -- it
+   processes the complete units in BUFFER and returns the unprocessed tail -- and once as
+   (drain tail t) at end of stream.  Returns (values END-POSITION REACHED-EOF)."
   (with-open-file (s path :direction :input)
-    (let ((cbuf (make-string *read-chunk*)) (pending "") (bytes 0) (prog 100000000))
+    (when (and start (plusp start)) (file-position s start))
+    (let ((cbuf (make-string *read-chunk*)) (pending "") (bytes 0) (prog 100000000) (eofp nil))
       (loop
 	(let ((n (read-sequence cbuf s)))
-	  (when (zerop n) (return))
+	  (when (zerop n) (setf eofp t) (return))   ; consumed to end of file
 	  (incf bytes n)
 	  (setf pending (funcall drain (concatenate 'string pending (subseq cbuf 0 n))))
 	  (when (and verbose (>= bytes prog))
-	    (format t "~&  ... ~:d MB read~%" (round bytes 1000000)) (incf prog 100000000))
-	  (when (and max-bytes (>= bytes max-bytes)) (return))))
-      (funcall drain pending t))))
+	    (format t "~&  ... ~:d MB this slice~%" (round bytes 1000000)) (incf prog 100000000))
+	  (when (and max-bytes (>= bytes max-bytes)) (return))))   ; slice cap reached (not EOF)
+      (funcall drain pending t)
+      (values (file-position s) eofp))))
 
 (defun read-text-file (path &key (extract *read-extract*) (verbose t) (max-mb *read-max-mb*))
   "Stream raw text from PATH (bounded memory) and learn from it as prose.  Splits on sentence
    terminators across the whole stream (newlines are whitespace), so it never loads the file
    in full -- safe for very large corpora.  Returns (values sentences facts)."
-  (let ((ns 0) (nf 0))
+  (let* ((ns 0) (nf 0) (key (offset-key path)) (start (gethash key *read-offsets* 0)))
     (flet ((proc (text)
 	     (dolist (s (split-sentences text))
 	       (let ((w (tokenize s))) (when w (incf ns) (incf nf (process-sentence w extract)))))))
-      (stream-chunks
-       path
-       (lambda (buf &optional final)
-	 (if final (progn (proc buf) "")
-	     (let ((p (position-if (lambda (c) (member c '(#\. #\! #\?))) buf :from-end t)))
-	       (cond (p (proc (subseq buf 0 (1+ p))) (subseq buf (1+ p)))
-		     ((> (length buf) *read-flush*) (proc buf) "")  ; no terminator: force-flush
-		     (t buf)))))
-       :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose))
-    (when verbose (format t "~&read ~:d sentences, learned ~:d facts from ~a~%" ns nf path))
+      (multiple-value-bind (end eofp)
+	  (stream-chunks
+	   path
+	   (lambda (buf &optional final)
+	     (if final (progn (proc buf) "")
+		 (let ((p (position-if (lambda (c) (member c '(#\. #\! #\?))) buf :from-end t)))
+		   (cond (p (proc (subseq buf 0 (1+ p))) (subseq buf (1+ p)))
+			 ((> (length buf) *read-flush*) (proc buf) "")  ; no terminator: force-flush
+			 (t buf)))))
+	   :start start :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose)
+	(setf (gethash key *read-offsets*) end)
+	(when verbose
+	  (format t "~&read ~:d sentences, learned ~:d facts from ~a~%" ns nf path)
+	  (report-slice path start end eofp))))
     (values ns nf)))
 
 ;;; --- Unified loader: one front door, two underlying modes ----------------------
@@ -559,7 +586,7 @@
      * blank lines and lines beginning with # or ; are ignored.
    One file may mix both formats.  Bind *read-max-mb* (or pass :max-mb) to cap a huge corpus.
    Returns (values pairs-learned prose-sentences prose-facts)."
-  (let ((pairs 0) (psent 0) (pfacts 0))
+  (let* ((pairs 0) (psent 0) (pfacts 0) (key (offset-key path)) (start (gethash key *read-offsets* 0)))
     (flet ((route (line)
 	     (let ((trimmed (string-left-trim '(#\Space #\Tab #\Return) line)))
 	       (cond
@@ -571,16 +598,19 @@
 		    (when (and in out) (learn in out) (incf pairs))))
 		 (t (multiple-value-bind (n f) (read-text trimmed :verbose nil)
 		      (incf psent n) (incf pfacts f)))))))
-      (stream-chunks
-       path
-       (lambda (buf &optional final)
-	 (if final (progn (when (plusp (length buf)) (route buf)) "")
-	     (let ((p (position #\Newline buf :from-end t)))
-	       (cond (p (dolist (ln (split-lines (subseq buf 0 p))) (route ln)) (subseq buf (1+ p)))
-		     ((> (length buf) *read-flush*) (route buf) "")  ; pathological long line
-		     (t buf)))))
-       :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose))
-    (when verbose
-      (format t "~&loaded ~a: ~:d supervised pair~:p, ~:d prose sentence~:p (~:d fact~:p)~%"
-	      path pairs psent pfacts))
+      (multiple-value-bind (end eofp)
+	  (stream-chunks
+	   path
+	   (lambda (buf &optional final)
+	     (if final (progn (when (plusp (length buf)) (route buf)) "")
+		 (let ((p (position #\Newline buf :from-end t)))
+		   (cond (p (dolist (ln (split-lines (subseq buf 0 p))) (route ln)) (subseq buf (1+ p)))
+			 ((> (length buf) *read-flush*) (route buf) "")  ; pathological long line
+			 (t buf)))))
+	   :start start :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose)
+	(setf (gethash key *read-offsets*) end)
+	(when verbose
+	  (format t "~&loaded ~a: ~:d supervised pair~:p, ~:d prose sentence~:p (~:d fact~:p)~%"
+		  path pairs psent pfacts)
+	  (report-slice path start end eofp))))
     (values pairs psent pfacts)))
