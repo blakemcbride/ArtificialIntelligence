@@ -49,9 +49,10 @@ remains open: composing them at depth with a local rule.
 | **Composition at depth** | `deep-composition-experiment.lisp` | Two layers trained by **local, layer-wise objectives** (no backprop) **compose** into an induction circuit, and **depth is required**: with a position-local value read, a single trained content layer can only return the matched token (0.37), while the 2-layer circuit returns its successor (1.00, incl. novel tokens). Layer 1 learns the previous-token head from its *own* target; layer 2 a continuous content matrix on top. | greedy per-layer (not one unified rule); 2 layers; toy scale |
 | **One unified rule at depth** | `forward-forward-experiment.lisp` | **Forward-Forward**: the *same* local goodness objective at **every** layer, **no backprop, no weight transport**. Trains nets to depth 5; deepest representation stays discriminative; all depths beat a linear model on a nonlinear task. | depth doesn't *improve* a toy task (FF finicky); not yet applied to attention |
 | **Uniting them (the frontier)** | `ff-attention-experiment.lisp` | Deep self-attention trained **entirely** by Forward-Forward (one local rule, no backprop; closed-form local update `x_q ⊗ w`). **Above chance but not competent** (≈0.30 vs 0.17). Maps *why* it's hard: FF's activity-goodness is a poor objective for context-dependent prediction; the reward rule has a good objective but credit-through-depth is unsolved. | **the open research problem** — backprop-free transformer training is unsolved |
+| **Credit through depth, locally** | `predictive-coding-experiment.lisp` | **Predictive coding** (local value + error nodes; settle latents, then a local Hebbian weight update `e ⊗ pre`). **Validated**: its local update reproduces the **backprop gradient** through a 3-weight-layer net (cosine **0.98 / 0.99 / 1.00**, numerically checked), and trained by PC *alone* it solves continuous-XOR (linear ≈ chance, 1-hidden ≈ 0.92, 2-hidden ≈ 0.95). This is the **missing half** FF lacked: a *good* (prediction/compatibility) objective **with** credit through depth — both local, no backward pass. | MLP toy, not yet attention; PC is finicky (needs bias, settled inference, momentum) |
 
-All of the above use only local rules — outer-product binding and reward-modulated Hebbian
-updates — and **no backpropagation**.
+All of the above use only local rules — outer-product binding, reward-modulated Hebbian
+updates, and predictive-coding error settling — and **no backpropagation**.
 
 ---
 
@@ -122,6 +123,26 @@ problem). The established backprop-free approaches are the route toward it:
 None match a backprop-trained transformer yet, but they are the route consistent with the two
 goals: local, continual, no global gradient.
 
+**Progress on the frontier — the predictive-coding route, taken and validated**
+(`predictive-coding-experiment.lisp`). Of those three, predictive coding directly supplies the
+half FF lacked: a *good* objective (predict the target — the same compatibility objective the
+reward rule used to reach 1.00) **together with** credit through depth. We implemented it here
+and checked it honestly:
+
+- **It really does credit-through-depth, locally.** PC's purely local weight update
+  (`e ⊗ pre`, after settling the latents) matches the **true backprop gradient** layer by
+  layer through a 3-weight-layer net — cosine **0.98 / 0.99 / 1.00**, numerically verified. No
+  global backward pass, no weight transport across the graph.
+- **And it trains depth.** By PC alone, continuous-XOR (a checkerboard a linear model cannot
+  separate) is solved — linear ≈ chance, 1-hidden ≈ 0.92, 2-hidden ≈ 0.95.
+
+So the open problem's *first half on a generic net* now has a working, validated local solution
+in this codebase. What remains — and what makes the transformer case still genuinely open — is
+applying this same local credit assignment **to the attention stack** and beating FF's 0.30 on
+the in-context induction task. Honest caveats: PC is a toy here (MLP, not attention) and is
+finicky in practice (needs biases, enough inference settling, and momentum to train stably).
+**The next experiment is `pc-attention`: PC over the 2-layer attention induction circuit.**
+
 ---
 
 ## 5. Honest caveats
@@ -143,11 +164,14 @@ goals: local, continual, no global gradient.
 > local, no-backprop learning — and a direct attempt to unite them (deep attention trained
 > entirely by Forward-Forward) that lands **above chance but not competent**, sharpening the
 > one open problem to: *a local rule with a good (compatibility) objective that also assigns
-> credit through depth*. That last step is genuinely unsolved — and now precisely mapped.
+> credit through depth*. The **predictive-coding** route now supplies that half on a generic
+> net — its local update matches the backprop gradient through depth (cosine ≈ 1) and trains
+> deep nets — so the remaining open step is narrowed to carrying it into the **attention**
+> stack. Precisely mapped, and now actively being closed.
 
 *Files:* `src/attention-stack-experiment.lisp`, `src/induction-head-experiment.lisp`,
 `src/induction.lisp`, `src/learned-attention-experiment.lisp`,
 `src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`,
 `src/deep-composition-experiment.lisp`, `src/forward-forward-experiment.lisp`,
-`src/ff-attention-experiment.lisp`.
+`src/ff-attention-experiment.lisp`, `src/predictive-coding-experiment.lisp`.
 *See also:* `Plan.md` Phase 10, `CLAUDE.md` (component map), `notes/BlockDiagram.tex`.
