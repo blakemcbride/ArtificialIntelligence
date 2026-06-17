@@ -23,7 +23,14 @@ and no backprop — are the whole point.
 
 ## Quick start (60 seconds)
 
-From a shell, in the `src/` directory, start SBCL and paste these:
+The fastest way in is the launcher script at the repo root — it starts SBCL with a large
+heap, loads the system, and enters the loop for you:
+
+```sh
+./sbcl-llm
+```
+
+Or do it by hand: from a shell, in the `src/` directory, start SBCL and paste these:
 
 ```lisp
 ;; 1. load the system (run this from inside src/)
@@ -35,7 +42,8 @@ From a shell, in the `src/` directory, start SBCL and paste these:
 
 On its first start `(main)` learns the broad starter knowledge base automatically, so it
 can answer right away — type a sentence and it responds, or teach it something new. The
-rest of this tutorial explains each piece.
+rest of this tutorial explains each piece. For the training workflow (bulk ingestion, very
+large files, configuration for everyday use), see **`Training.md`** at the repo root.
 
 ---
 
