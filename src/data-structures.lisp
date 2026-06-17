@@ -41,6 +41,7 @@
 	   "*REL-FREQ*"
 	   "*REL-SENTENCES*"
 	   "*READ-OFFSETS*"
+	   "*SELECTOR*"
 	   "DUMP-DICTIONARY"))
 
 (in-package "data-structures")
@@ -73,6 +74,7 @@
 (defparameter *rel-freq* (make-hash-table :test 'equal))  ; word -> # sentences it appears in (for function-word discovery)
 (defparameter *rel-sentences* 0)                          ; sentences fed to the relation learner
 (defparameter *read-offsets* (make-hash-table :test 'equal)) ; file path -> byte offset consumed (resume .read in slices)
+(defparameter *selector* (make-hash-table :test 'equal)) ; "ctx<TAB>candidate" -> weight: learned policy for the LLM-advisor controller (Part 5)
 
 (defun reset ()
   (setq *dictionary* (make-hash-table :test 'equal))
@@ -97,7 +99,8 @@
   (setq *rel-head* (make-hash-table :test 'equal))
   (setq *rel-freq* (make-hash-table :test 'equal))
   (setq *rel-sentences* 0)
-  (setq *read-offsets* (make-hash-table :test 'equal)))
+  (setq *read-offsets* (make-hash-table :test 'equal))
+  (setq *selector* (make-hash-table :test 'equal)))
 
 (defstruct neuron
   "An unnamed neuron"

@@ -26,6 +26,8 @@
 (load "relations.lisp")
 (load "processing.lisp")
 (load "persist.lisp")
+(load "llm.lisp")
+(load "controller.lisp")
 (load "ai.lisp")   ; loaded last; its use-package forms bring every component's
                    ; exported symbols into this package (COMMON-LISP-USER)
 
@@ -869,6 +871,41 @@
           (check "parallel read yields identical co-occurrence totals" (= (nt *cooccur*) seq-co))
           (check "parallel read yields identical transition totals"    (= (nt *transitions*) seq-tr)))
         (ignore-errors (delete-file tmp)))))
+
+  (format t "~%Part 5 (controller + LLM advisor) tests~%")
+  ;; the LLM JSON reader (validates response parsing without a live API)
+  (check "llm JSON reader extracts a nested field"
+         (string= "hi" (jref (parse-json "{\"choices\":[{\"message\":{\"content\":\"hi\"}}]}")
+                              "choices" 0 "message" "content")))
+  (check "llm JSON reader decodes escapes"
+         (string= (format nil "a~cb" #\Newline) (parse-json "\"a\\nb\"")))
+  ;; the controller learns WHICH proposal to pick, from outcome feedback, with a mock LLM
+  (reset)
+  (let ((*provider* :mock)
+        (*mock-fn* (lambda (p s) (declare (ignore s))
+                     (if (search "Propose" p) (format nil "1. alpha~%2. beta~%3. gamma") "done")))
+        (input "choose the best option for me"))
+    (check "controller-propose parses the LLM's candidate list"
+           (equal '("alpha" "beta" "gamma") (controller-propose input)))
+    (dotimes (r 4)                                   ; reward only "beta"
+      (multiple-value-bind (res chosen cands) (controller-respond input)
+        (declare (ignore res cands))
+        (controller-reward (if (search "beta" chosen) 1.0 -1.0))))
+    (check "controller learns to select the rewarded candidate"
+           (string= "beta" (controller-select input '("alpha" "beta" "gamma"))))
+    (check "selector weight is positive for the rewarded (context,candidate)"
+           (> (controller-score input "beta") 0.0))
+    (check "selector weight is non-positive for a punished candidate"
+           (<= (controller-score input "alpha") 0.0))
+    ;; the learned policy persists with the knowledge base
+    (let ((kb "controller-temp.kb") (w (controller-score input "beta")))
+      (save-network kb)
+      (reset)
+      (check "controller policy is cleared by reset" (zerop (controller-score input "beta")))
+      (load-network kb)
+      (check "controller policy persists across save / reload"
+             (< (abs (- (controller-score input "beta") w)) 0.001))
+      (ignore-errors (delete-file kb))))
 
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")

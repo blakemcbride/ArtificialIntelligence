@@ -48,6 +48,11 @@
 (require "persist")
 (use-package "persist")
 
+(require "llm")
+(use-package "llm")
+(require "controller")
+(use-package "controller")
+
 ;; Parallel bulk reading uses SBCL threads + a mailbox; load the contrib when available.
 #+(and sbcl sb-thread) (require :sb-concurrency)
 (defparameter *parallel-ok* #+(and sbcl sb-thread) t #-(and sbcl sb-thread) nil

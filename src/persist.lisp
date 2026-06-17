@@ -157,6 +157,7 @@
 		   :rel-freq (hash->plain-alist *rel-freq*)
 		   :rel-sentences *rel-sentences*
 		   :read-offsets (hash->plain-alist *read-offsets*)
+		   :selector (hash->plain-alist *selector*)
 		   :tunables (and *tunable-provider* (funcall *tunable-provider*)))
 	     s)
       (terpri s)))
@@ -236,6 +237,7 @@
     (dolist (p (getf data :rel-freq)) (setf (gethash (car p) *rel-freq*) (cdr p)))
     (setf *rel-sentences* (or (getf data :rel-sentences) 0))
     (dolist (p (getf data :read-offsets)) (setf (gethash (car p) *read-offsets*) (cdr p)))
+    (dolist (p (getf data :selector)) (setf (gethash (car p) *selector*) (cdr p)))   ; learned controller policy
     (when (and *tunable-restorer* (getf data :tunables))   ; restore the .set parameters saved with this KB
       (funcall *tunable-restorer* (getf data :tunables)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
