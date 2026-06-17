@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# sbcl-llm -- launch the Hebbian AI teaching loop in SBCL with a large heap.
+#
+#   a. starts SBCL with --dynamic-space-size 16384 (16 GB Lisp heap)
+#   b. loads the system        : (load "load.lisp")
+#   c. enters the teaching loop : (main)
+#
+# The big heap matters for large-corpus training: the default SBCL heap is ~1 GB,
+# which is the usual cause of a "Heap exhausted" crash while reading a huge file.
+# See Training.md for the training workflow.
+#
+set -euo pipefail
+
+# Run from the directory that holds load.lisp, so the relative paths it uses
+# (the training files, the saved knowledge base) resolve there.  Works whether
+# this script lives at the repo root or inside src/.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if   [ -f "$script_dir/src/load.lisp" ]; then cd "$script_dir/src"
+elif [ -f "$script_dir/load.lisp"     ]; then cd "$script_dir"
+else
+    echo "sbcl-llm: cannot find load.lisp near $script_dir" >&2
+    exit 1
+fi
+
+exec sbcl --dynamic-space-size 16384 \
+          --eval '(load "load.lisp")' \
+          --eval '(main)' \
+          --eval '(sb-ext:exit)'

@@ -21,6 +21,11 @@ whole system with one call:
 (main)               ; NOT (ai::main) — see note below
 ```
 
+The launcher script **`./sbcl-llm`** (repo root) does all of this: it starts SBCL with a 16 GB
+heap (`--dynamic-space-size 16384`), loads `load.lisp`, and enters `main` — the recommended way
+to run a large-corpus training session. The training workflow (bulk configuration, very large
+files, switching back for everyday use) is documented in **`Training.md`**.
+
 `load.lisp` also defines `(load-system)`, which reloads everything after an edit. Under the
 hood it loads each component by pathname; each file `(provide …)`s, so the internal
 `(require …)` forms are no-ops. (CLISP alone can also `(load "ai.lisp")` directly — its

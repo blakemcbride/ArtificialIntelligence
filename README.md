@@ -78,8 +78,11 @@ The design and rationale are documented in `Plan.md`; a map of the code is in `C
 
 ## Getting started
 
-The code is Common Lisp (developed primarily with SBCL). For a hands-on walkthrough, read
-**`tutorial/tutorial.md`**. In brief, from a REPL started in the `src/` directory:
+The code is Common Lisp (developed primarily with SBCL). The quickest way in is the launcher
+script **`./sbcl-llm`** (starts SBCL with a 16 GB heap, loads the system, and enters the
+interactive loop). For a hands-on walkthrough, read **`tutorial/tutorial.md`**; for the
+training workflow (bulk ingestion, very large files, configuration for everyday use), read
+**`Training.md`**. In brief, from a REPL started in the `src/` directory:
 
 ```lisp
 ;; load the system (run this from inside src/)
@@ -121,7 +124,9 @@ Run the test suite from `src/` with `make test`.
 * `src/` — the Common Lisp implementation (the live system), plus `knowledge-base.txt` (the
   broad starter KB auto-learned on first run) and `generalization-test.txt` (the focused
   generalization demo used by the tests).
+* `sbcl-llm` — launcher script: SBCL with a 16 GB heap, loads the system, enters `main`.
 * `tutorial/` — a hands-on tutorial.
+* `Training.md` — how to train the system: configuration, very large files, everyday use.
 * `notes/` — my original, unfiltered notes, an overview of the intended design, and a
   system block diagram (`BlockDiagram.tex` / `.pdf`).
 * `Plan.md` — the design and the phased build plan.
