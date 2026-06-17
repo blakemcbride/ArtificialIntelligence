@@ -534,16 +534,26 @@
    (drain tail t) at end of stream.  Returns (values END-POSITION REACHED-EOF)."
   (with-open-file (s path :direction :input)
     (when (and start (plusp start)) (file-position s start))
-    (let ((cbuf (make-string *read-chunk*)) (pending "") (bytes 0) (prog 100000000) (eofp nil))
+    (let ((cbuf (make-string *read-chunk*)) (pending "") (bytes 0) (prog 0) (eofp nil)
+	  (total (ignore-errors (file-length s)))   ; whole-file size (for the X-of-Y status)
+	  (shown nil))                               ; did we print a live status line?
       (loop
 	(let ((n (read-sequence cbuf s)))
 	  (when (zerop n) (setf eofp t) (return))   ; consumed to end of file
 	  (incf bytes n)
 	  (setf pending (funcall drain (concatenate 'string pending (subseq cbuf 0 n))))
-	  (when (and verbose (>= bytes prog))
-	    (format t "~&  ... ~:d MB this slice~%" (round bytes 1000000)) (incf prog 100000000))
+	  (when (and verbose (>= bytes prog))       ; live, in-place status (carriage return, no newline)
+	    (let ((pos (or (ignore-errors (file-position s)) bytes)))
+	      (format t "~C  reading ~a: ~:d MB~@[ / ~:d MB~]~@[ (~d%)~]    "
+		      #\Return (file-namestring path)
+		      (round pos 1000000)
+		      (and total (round total 1000000))
+		      (and total (plusp total) (min 100 (round (* 100 pos) total))))
+	      (force-output))
+	    (setf shown t prog (+ bytes 2000000)))  ; update every ~2 MB
 	  (when (and max-bytes (>= bytes max-bytes)) (return))))   ; slice cap reached (not EOF)
       (funcall drain pending t)
+      (when (and verbose shown) (terpri))         ; finish the status line
       (values (file-position s) eofp))))
 
 (defun read-text-file (path &key (extract *read-extract*) (verbose t) (max-mb *read-max-mb*))

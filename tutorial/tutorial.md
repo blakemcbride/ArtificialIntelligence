@@ -178,6 +178,9 @@ input> .config                     ; watch the sizes plateau at the caps
 input> .read fineweb-edu.txt       ; RESUMES -- the NEXT ~1 GB, automatically
 ```
 
+While a `.read` runs it shows a **live status line** that updates in place (no scrolling) —
+`reading FILE: X MB / Y MB (Z%)` — so you can watch a big ingestion progress.
+
 `.read` **resumes where it last stopped** (a per-file offset, saved in the `.kb`), so just
 call `.read FILE` again to get the next slice — even after a `.save`/`.quit`/restart. When a
 store exceeds its cap it is pruned to its strongest entries, so the model stays within fixed
