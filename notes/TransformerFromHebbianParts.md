@@ -50,6 +50,7 @@ remains open: composing them at depth with a local rule.
 | **One unified rule at depth** | `forward-forward-experiment.lisp` | **Forward-Forward**: the *same* local goodness objective at **every** layer, **no backprop, no weight transport**. Trains nets to depth 5; deepest representation stays discriminative; all depths beat a linear model on a nonlinear task. | depth doesn't *improve* a toy task (FF finicky); not yet applied to attention |
 | **Uniting them (the frontier)** | `ff-attention-experiment.lisp` | Deep self-attention trained **entirely** by Forward-Forward (one local rule, no backprop; closed-form local update `x_q ⊗ w`). **Above chance but not competent** (≈0.30 vs 0.17). Maps *why* it's hard: FF's activity-goodness is a poor objective for context-dependent prediction; the reward rule has a good objective but credit-through-depth is unsolved. | **the open research problem** — backprop-free transformer training is unsolved |
 | **Credit through depth, locally** | `predictive-coding-experiment.lisp` | **Predictive coding** (local value + error nodes; settle latents, then a local Hebbian weight update `e ⊗ pre`). **Validated**: its local update reproduces the **backprop gradient** through a 3-weight-layer net (cosine **0.98 / 0.99 / 1.00**, numerically checked), and trained by PC *alone* it solves continuous-XOR (linear ≈ chance, 1-hidden ≈ 0.92, 2-hidden ≈ 0.95). This is the **missing half** FF lacked: a *good* (prediction/compatibility) objective **with** credit through depth — both local, no backward pass. | MLP toy, not yet attention; PC is finicky (needs bias, settled inference, momentum) |
+| **PC into attention (clarifying negative)** | `pc-attention-experiment.lisp` | PC over the 2-layer **attention** induction circuit. Findings, all from one FD-validated implementation: the circuit **can** represent induction (oracle, clean keys + `M2=I`: **1.00**); PC's local update **is** backprop's credit assignment through the attention depth (cosine **≈0.93 / 0.82**); **yet JOINT training from scratch is ≈chance for BOTH backprop (0.17) and PC (0.09)**. The wall is the **credit-through-depth plateau** (layer 1 can't become a previous-token head until layer 2 is an induction head, and vice versa) — so the binding constraint is **joint optimization, not the locality of the rule**. | even backprop plateaus jointly at toy scale; the working route is per-layer objectives (deep-composition) |
 
 All of the above use only local rules — outer-product binding, reward-modulated Hebbian
 updates, and predictive-coding error settling — and **no backpropagation**.
@@ -141,7 +142,28 @@ in this codebase. What remains — and what makes the transformer case still gen
 applying this same local credit assignment **to the attention stack** and beating FF's 0.30 on
 the in-context induction task. Honest caveats: PC is a toy here (MLP, not attention) and is
 finicky in practice (needs biases, enough inference settling, and momentum to train stably).
-**The next experiment is `pc-attention`: PC over the 2-layer attention induction circuit.**
+
+**`pc-attention-experiment.lisp` carried PC into the attention case — a clarifying negative.**
+On the 2-layer attention induction circuit, with one finite-difference-validated implementation:
+
+- the circuit **can** represent induction (oracle with clean previous-token keys and `M2=I`: **1.00**);
+- PC's local update **is** backprop's credit assignment through the attention depth
+  (cosine **≈0.93 / 0.82** per layer);
+- **but JOINT end-to-end training from scratch lands at ≈chance for BOTH backprop (0.17) and
+  PC (0.09).**
+
+The decisive lesson: the wall is **not** "local rule vs. global gradient." PC faithfully tracks
+backprop here, and *backprop itself does not escape this plateau at toy scale.* The obstacle is
+the **credit-through-depth plateau** — layer 1 has no gradient signal to become a previous-token
+head until layer 2 is an induction head, and vice versa (with random/sinusoidal positional codes,
+a single bilinear layer also struggles to even represent the "attend one back" shift). This is
+why the route that *works* (`deep-composition-experiment.lisp`) gives each layer its **own** local
+objective (layer 1: predict the previous token), reaching 1.00 — it sidesteps the joint plateau.
+
+So the open problem is re-sharpened: a local rule needs not just correct credit (PC has it) but a
+way **past the joint plateau** — most plausibly a **per-layer prediction-error objective** (the
+deep-composition insight, which PC expresses natively as an error node at every layer). **That
+unification — PC with layer-local targets at depth — is the next experiment.**
 
 ---
 
@@ -164,14 +186,18 @@ finicky in practice (needs biases, enough inference settling, and momentum to tr
 > local, no-backprop learning — and a direct attempt to unite them (deep attention trained
 > entirely by Forward-Forward) that lands **above chance but not competent**, sharpening the
 > one open problem to: *a local rule with a good (compatibility) objective that also assigns
-> credit through depth*. The **predictive-coding** route now supplies that half on a generic
-> net — its local update matches the backprop gradient through depth (cosine ≈ 1) and trains
-> deep nets — so the remaining open step is narrowed to carrying it into the **attention**
-> stack. Precisely mapped, and now actively being closed.
+> credit through depth*. The **predictive-coding** route supplies that half on a generic net
+> (its local update matches the backprop gradient through depth, cosine ≈ 1, and it trains deep
+> nets) — and carrying it into **attention** produced a clarifying result: PC faithfully equals
+> backprop through the attention depth, but *neither* escapes the joint credit-through-depth
+> plateau from scratch at toy scale, so the binding constraint is **joint optimization, not
+> locality** — pointing to per-layer prediction-error objectives as the way through. The wall is
+> now mapped to the inch.
 
 *Files:* `src/attention-stack-experiment.lisp`, `src/induction-head-experiment.lisp`,
 `src/induction.lisp`, `src/learned-attention-experiment.lisp`,
 `src/learned-induction-experiment.lisp`, `src/learned-qk-attention-experiment.lisp`,
 `src/deep-composition-experiment.lisp`, `src/forward-forward-experiment.lisp`,
-`src/ff-attention-experiment.lisp`, `src/predictive-coding-experiment.lisp`.
+`src/ff-attention-experiment.lisp`, `src/predictive-coding-experiment.lisp`,
+`src/pc-attention-experiment.lisp`.
 *See also:* `Plan.md` Phase 10, `CLAUDE.md` (component map), `notes/BlockDiagram.tex`.
