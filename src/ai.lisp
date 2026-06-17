@@ -48,6 +48,11 @@
 (require "persist")
 (use-package "persist")
 
+;; Parallel bulk reading uses SBCL threads + a mailbox; load the contrib when available.
+#+(and sbcl sb-thread) (require :sb-concurrency)
+(defparameter *parallel-ok* #+(and sbcl sb-thread) t #-(and sbcl sb-thread) nil
+  "True when parallel bulk reading (SBCL threads) is available.")
+
 (defparameter *confirm-words* '("yes" "y" "right" "correct" "ok")
   "Single-word teacher lines that confirm a correct guess instead of giving a new answer.")
 
@@ -75,8 +80,22 @@
 (defparameter *prune-every*     5000 "Enforce caps once per this many learned sentences.")
 (defvar *learned-since-prune* 0)
 
+;;; Per-learner toggles for the bulk (read-extract off) path.  Each statistical learner can be
+;;; switched off independently, so a huge/noisy corpus can run only the learners worth running.
+;;; *read-cooccur* gates the O(words^2) co-occurrence learner -- the big one to drop for web text.
+(defparameter *read-cooccur*     t "Run the (O(n^2)) co-occurrence/similarity learner while reading.")
+(defparameter *read-relations*   t "Run the relation-discovery learner (observe + membership) while reading.")
+(defparameter *read-facts-p*     t "Run the declarative-fact learner (note-facts) while reading.")
+(defparameter *read-transitions-p* t "Run the next-word transition learner while reading.")
+
+;;; Parallel bulk reading (SBCL only): N worker threads share the load via shard-and-merge.
+(defparameter *read-workers* 1 "Worker threads for a bulk .read (SBCL only; 1 = sequential).")
+
 (defparameter *tunables*
   '(("read-max-mb"     . *read-max-mb*)     ("read-extract"    . *read-extract*)
+    ("read-cooccur"    . *read-cooccur*)    ("read-relations"  . *read-relations*)
+    ("read-facts"      . *read-facts-p*)    ("read-transitions" . *read-transitions-p*)
+    ("read-workers"    . *read-workers*)
     ("max-vocab"       . *max-vocab*)       ("max-cooccur"     . *max-cooccur*)
     ("max-transitions" . *max-transitions*) ("max-facts"       . *max-facts*)
     ("prune-every"     . *prune-every*))
@@ -204,6 +223,7 @@
   (format t "  .load FILE     clear, then load FILE and make it the active file~%")
   (format t "  .read FILE     learn from FILE (resumes where it left off; honors read-max-mb)~%")
   (format t "  .rewind FILE   forget how far FILE was read (next .read starts over)~%")
+  (format t "  .merge FILE    merge another .kb's learned counts into the current model~%")
   (format t "  .config        show tunable parameters (model caps) and current sizes~%")
   (format t "  .set NAME VAL  change a parameter (e.g. .set max-cooccur 200000; off = unlimited)~%")
   (format t "  .quit          save and exit                       (also .exit)~%")
@@ -276,6 +296,11 @@
      nil)
     ((string= name "rewind")
      (if (zerop (length arg)) (format t "  (.rewind needs a filename)~%") (rewind-file arg))
+     nil)
+    ((string= name "merge")
+     (cond ((zerop (length arg)) (format t "  (.merge needs a .kb filename)~%"))
+	   ((merge-kb arg) (format t "  (merged the count stores from ~a into the current model)~%" arg))
+	   (t (format t "  (could not merge ~a -- file not found)~%" arg)))
      nil)
     (t (format t "  (unknown command .~a -- type .help for the command list)~%" name)
        nil)))
@@ -520,13 +545,15 @@
    *prune-every* sentences.  Returns 1 if a fact was extracted, else 0."
   (let ((nf 0))
     (when words
-      (observe words)                  ; relations: online connector/head discovery (Phase 9)
-      (note-cooccurrence words nil)    ; distributed-vector similarity
-      (note-sequence words)            ; generation transition model (Phase 8)
-      (note-facts words)               ; generation declarative triples (hardcoded)
-      (multiple-value-bind (subj conn cat cls) (relation-of words)
-	(declare (ignore conn))
-	(when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat)))
+      (when *read-relations* (observe words))      ; relations: online connector/head discovery (Phase 9)
+      (when *read-cooccur* (note-cooccurrence words nil))  ; distributed-vector similarity (O(n^2))
+      (when *read-transitions-p* (note-sequence words))   ; generation transition model (Phase 8)
+      (when *read-facts-p*
+	(note-facts words)               ; generation declarative triples (hardcoded)
+	(when *read-relations*
+	  (multiple-value-bind (subj conn cat cls) (relation-of words)
+	    (declare (ignore conn))
+	    (when (and (eq cls :membership) subj cat) (note-fact subj "is-a" cat)))))
       (when (and extract (extract-fact (cap-tokens words))) (setf nf 1)))   ; vocab-capped
     (when (>= (incf *learned-since-prune*) *prune-every*)
       (setf *learned-since-prune* 0) (enforce-caps))
@@ -570,10 +597,21 @@
       (when (and verbose shown) (terpri))         ; finish the status line
       (values (file-position s) eofp))))
 
+(defun use-parallel-p ()
+  "Should the next bulk read fan out across worker threads?"
+  (and *parallel-ok* (integerp *read-workers*) (> *read-workers* 1)))
+
 (defun read-text-file (path &key (extract *read-extract*) (verbose t) (max-mb *read-max-mb*))
-  "Stream raw text from PATH (bounded memory) and learn from it as prose.  Splits on sentence
-   terminators across the whole stream (newlines are whitespace), so it never loads the file
-   in full -- safe for very large corpora.  Returns (values sentences facts)."
+  "Stream raw text from PATH (bounded memory) and learn from it as prose.  Returns (values
+   sentences facts).  When read-extract is off and read-workers > 1 (SBCL), fans the per-sentence
+   learning out across worker threads (shard-and-merge); otherwise runs the sequential path."
+  (if (and (not extract) (use-parallel-p))
+      (read-text-file-parallel path :max-mb max-mb :verbose verbose)
+      (read-text-file-sequential path :extract extract :verbose verbose :max-mb max-mb)))
+
+(defun read-text-file-sequential (path &key (extract *read-extract*) (verbose t) (max-mb *read-max-mb*))
+  "Single-threaded prose reader (the portable path).  Splits on sentence terminators across the
+   whole stream (newlines are whitespace), never loading the file in full.  (values sentences facts)."
   (let* ((ns 0) (nf 0) (key (offset-key path)) (start (gethash key *read-offsets* 0)))
     (flet ((proc (text)
 	     (dolist (s (split-sentences text))
@@ -609,7 +647,15 @@
      * any other non-comment line is prose                                -> read-text;
      * blank lines and lines beginning with # or ; are ignored.
    One file may mix both formats.  Bind *read-max-mb* (or pass :max-mb) to cap a huge corpus.
+   When read-extract is off and read-workers > 1 (SBCL), the prose is learned in parallel worker
+   threads while any supervised pairs are applied sequentially after the parallel pass.
    Returns (values pairs-learned prose-sentences prose-facts)."
+  (if (and (not *read-extract*) (use-parallel-p))
+      (load-knowledge-parallel path :verbose verbose :separator separator :max-mb max-mb)
+      (load-knowledge-sequential path :verbose verbose :separator separator :max-mb max-mb)))
+
+(defun load-knowledge-sequential (path &key (verbose t) (separator "=>") (max-mb *read-max-mb*))
+  "Single-threaded unified loader (the portable path).  (values pairs prose-sentences prose-facts)."
   (let* ((pairs 0) (psent 0) (pfacts 0) (key (offset-key path)) (start (gethash key *read-offsets* 0)))
     (flet ((route (line)
 	     (let ((trimmed (string-left-trim '(#\Space #\Tab #\Return) line)))
@@ -638,3 +684,136 @@
 		  path pairs psent pfacts)
 	  (report-slice path start end eofp))))
     (values pairs psent pfacts)))
+
+;;; --- Parallel bulk reading (SBCL): shard-and-merge --------------------------------
+;;; The prose learners are all additive counters, so the work splits cleanly: ONE reader
+;;; thread streams + tokenizes the file (the cheap, I/O-bound part) and hands batches of
+;;; tokenized sentences to N worker threads; each worker learns into its OWN private count
+;;; stores (dynamic rebindings -- zero contention), and we sum the partials at the end
+;;; (persist:merge-worker-stores).  A semaphore bounds in-flight batches so the fast reader
+;;; can't outrun the workers and blow up memory.  Parallel runs only in the read-extract-off
+;;; (lean) path -- the supervised path mutates a shared, non-mergeable neuron graph.
+;;; On a non-thread build these fall back to the sequential reader, so the code stays portable.
+
+#+(and sbcl sb-thread)
+(defun spawn-prose-worker (mailbox sem)
+  "Start a worker that learns batches from MAILBOX into PRIVATE stores and returns them."
+  (sb-thread:make-thread
+   (lambda ()
+     (let ((*cooccur* (make-hash-table :test 'equal))     ; private per-worker count stores
+	   (*transitions* (make-hash-table :test 'equal))
+	   (*sentence-starts* (make-hash-table :test 'equal))
+	   (*facts* (make-hash-table :test 'equal))
+	   (*rel-links* (make-hash-table :test 'equal))
+	   (*rel-head* (make-hash-table :test 'equal))
+	   (*rel-freq* (make-hash-table :test 'equal))
+	   (*rel-sentences* 0)
+	   (*vcache* (make-hash-table :test 'equal))
+	   (*vec-mean* nil)
+	   (*max-vocab* nil) (*max-cooccur* nil)          ; no per-worker pruning; prune once after merge
+	   (*max-transitions* nil) (*max-facts* nil) (*learned-since-prune* 0))
+       (loop for batch = (sb-concurrency:receive-message mailbox)
+	     until (eq batch :done)
+	     do (dolist (w batch) (process-sentence w nil))   ; extract off
+		(sb-thread:signal-semaphore sem))               ; release one in-flight slot
+       (list *cooccur* *transitions* *sentence-starts* *facts*
+	     *rel-links* *rel-head* *rel-freq* *rel-sentences*)))
+   :name "prose-worker"))
+
+(defun read-text-file-parallel (path &key (max-mb *read-max-mb*) (verbose t))
+  "Parallel prose reader (SBCL).  Returns (values sentences facts)."
+  #-(and sbcl sb-thread)
+  (read-text-file-sequential path :extract nil :verbose verbose :max-mb max-mb)
+  #+(and sbcl sb-thread)
+  (let* ((key (offset-key path)) (start (gethash key *read-offsets* 0))
+	 (nw *read-workers*) (batch-size 512)
+	 (mailbox (sb-concurrency:make-mailbox))
+	 (sem (sb-thread:make-semaphore :count (* nw 4)))   ; backpressure: <= 4 batches/worker in flight
+	 (workers (loop repeat nw collect (spawn-prose-worker mailbox sem)))
+	 (batch nil) (nb 0) (ns 0))
+    (labels ((send-batch ()
+	       (when batch
+		 (sb-thread:wait-on-semaphore sem)              ; block if too many batches queued
+		 (sb-concurrency:send-message mailbox (nreverse batch))
+		 (setf batch nil nb 0)))
+	     (enq (text)
+	       (dolist (s (split-sentences text))
+		 (let ((w (tokenize s)))
+		   (when w (push w batch) (incf ns)
+			 (when (>= (incf nb) batch-size) (send-batch)))))))
+      (multiple-value-bind (end eofp)
+	  (stream-chunks
+	   path
+	   (lambda (buf &optional final)
+	     (if final (progn (enq buf) "")
+		 (let ((p (position-if (lambda (c) (member c '(#\. #\! #\?))) buf :from-end t)))
+		   (cond (p (enq (subseq buf 0 (1+ p))) (subseq buf (1+ p)))
+			 ((> (length buf) *read-flush*) (enq buf) "")
+			 (t buf)))))
+	   :start start :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose)
+	(send-batch)
+	(dotimes (i nw) (sb-concurrency:send-message mailbox :done))   ; one stop signal per worker
+	(dolist (th workers) (merge-worker-stores (sb-thread:join-thread th)))
+	(clrhash *vcache*) (setf *vec-mean* nil)
+	(enforce-caps)                                                 ; prune once over the merged model
+	(setf (gethash key *read-offsets*) end)
+	(when verbose
+	  (format t "~&read ~:d sentences via ~d worker~:p from ~a~%" ns nw path)
+	  (report-slice path start end eofp))
+	(values ns 0)))))
+
+(defun load-knowledge-parallel (path &key (verbose t) (separator "=>") (max-mb *read-max-mb*))
+  "Parallel unified loader (SBCL): prose is learned in worker threads; supervised pairs are
+   collected and applied sequentially after the parallel pass (they mutate the shared graph)."
+  #-(and sbcl sb-thread)
+  (load-knowledge-sequential path :verbose verbose :separator separator :max-mb max-mb)
+  #+(and sbcl sb-thread)
+  (let* ((key (offset-key path)) (start (gethash key *read-offsets* 0))
+	 (nw *read-workers*) (batch-size 512)
+	 (mailbox (sb-concurrency:make-mailbox))
+	 (sem (sb-thread:make-semaphore :count (* nw 4)))
+	 (workers (loop repeat nw collect (spawn-prose-worker mailbox sem)))
+	 (batch nil) (nb 0) (psent 0) (deferred nil))
+    (labels ((send-batch ()
+	       (when batch
+		 (sb-thread:wait-on-semaphore sem)
+		 (sb-concurrency:send-message mailbox (nreverse batch))
+		 (setf batch nil nb 0)))
+	     (enq-prose (text)
+	       (dolist (s (split-sentences text))
+		 (let ((w (tokenize s)))
+		   (when w (push w batch) (incf psent)
+			 (when (>= (incf nb) batch-size) (send-batch))))))
+	     (route (line)
+	       (let ((trimmed (string-left-trim '(#\Space #\Tab #\Return) line)))
+		 (cond
+		   ((or (zerop (length trimmed)) (member (char trimmed 0) '(#\# #\;))) nil)
+		   ((find-substring separator line) (push line deferred))   ; pair -> defer to sequential
+		   (t (enq-prose trimmed))))))
+      (multiple-value-bind (end eofp)
+	  (stream-chunks
+	   path
+	   (lambda (buf &optional final)
+	     (if final (progn (when (plusp (length buf)) (route buf)) "")
+		 (let ((p (position #\Newline buf :from-end t)))
+		   (cond (p (dolist (ln (split-lines (subseq buf 0 p))) (route ln)) (subseq buf (1+ p)))
+			 ((> (length buf) *read-flush*) (route buf) "")
+			 (t buf)))))
+	   :start start :max-bytes (and max-mb (round (* max-mb 1000000))) :verbose verbose)
+	(send-batch)
+	(dotimes (i nw) (sb-concurrency:send-message mailbox :done))
+	(dolist (th workers) (merge-worker-stores (sb-thread:join-thread th)))
+	(clrhash *vcache*) (setf *vec-mean* nil)
+	(let ((pairs 0))                                  ; now the deferred supervised pairs, in order
+	  (dolist (line (nreverse deferred))
+	    (let* ((sep (find-substring separator line))
+		   (in  (tokenize (subseq line 0 sep)))
+		   (out (tokenize (subseq line (+ sep (length separator))))))
+	      (when (and in out) (learn in out) (incf pairs))))
+	  (enforce-caps)
+	  (setf (gethash key *read-offsets*) end)
+	  (when verbose
+	    (format t "~&loaded ~a: ~:d supervised pair~:p, ~:d prose sentence~:p via ~d worker~:p~%"
+		    path pairs psent nw)
+	    (report-slice path start end eofp))
+	  (values pairs psent 0))))))

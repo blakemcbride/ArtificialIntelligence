@@ -194,6 +194,44 @@ The `.set` settings (the caps and `read-extract`) are **saved in the `.kb`** and
 it with a bigger heap, e.g. `sbcl --dynamic-space-size 16384` (16 GB). The caps bound the
 model; the heap is the absolute ceiling — you need both.
 
+**Go faster: use more cores.** The bulk path runs several learners per sentence, one of them
+(co-occurrence) quadratic in sentence length. Two levers:
+
+```text
+input> .set read-cooccur off       ; drop the O(n^2) similarity learner (the big cost on web text)
+input> .set read-workers 8         ; SBCL: fan the work across 8 threads (shard-and-merge)
+input> .read fineweb-edu.txt       ; "...via 8 workers" -- now CPU-bound across cores
+```
+
+`.set read-workers N` (SBCL only, and only when `read-extract` is off) splits each `.read`
+across N worker threads: one thread streams the file, N learn in parallel into private tables
+that are summed at the end. The result is **exact** for the counting learners — identical to a
+single-threaded run. (It uses more peak memory, since pruning happens once after the merge; if
+memory gets tight, lower `read-workers` or `read-max-mb`.) The per-learner toggles
+(`read-cooccur` / `read-relations` / `read-facts` / `read-transitions`, all default on) let you
+skip whichever learners aren't worth running on a given corpus — see the discussion of *which*
+learners pay off on raw web text below.
+
+**Sharding across processes (and `.merge`).** Because the bulk learners are additive counters,
+you can also split the work across **separate runs** and combine them: read different slices in
+different SBCL processes (each to its own `.kb`), then `.load` one and `.merge` the rest:
+
+```text
+input> .load shard-1.kb            ; start from the first shard
+input> .merge shard-2.kb           ; sum in the learned counts of the others
+input> .merge shard-3.kb
+```
+
+`.merge FILE` adds another `.kb`'s co-occurrence / transitions / facts / relation counts into
+the current model (it does **not** reset, and does not merge the neuron/concept graph — only the
+additive stores).
+
+**Will turning learners off make it dumber?** Only for what it would have learned *from this
+corpus*, and on raw web text the expensive learners (co-occurrence, relation discovery) mostly
+accumulate noise — the next-word **transition** model is the one that genuinely benefits from
+scale. So for a huge web dump, "transitions only" is usually the right trade, not a lobotomy;
+keep every learner on for small, curated, high-signal text where speed isn't the issue.
+
 You can also teach a single pair from code — `learn` takes an input and an answer (each a
 sentence string or a word list) and returns what the system *would* have answered *before*
 this lesson (handy for scoring). On a blank system the first answer is `NIL`:
@@ -502,6 +540,7 @@ human-readable s-expression — you can peek at it.
 | See system stats (facts, neurons, …) | `(system-stats)` |
 | Inside `(main)`: save / load / read a file | `.save f.kb` / `.load f.kb` / `.read prose.txt` |
 | Inside `(main)`: read a huge file in slices | `.read big.txt` (resumes) / `.rewind big.txt` |
+| Inside `(main)`: read faster / combine shards | `.set read-workers 8` / `.merge shard.kb` |
 | Inside `(main)`: list saved knowledge bases | `.list` / `.list DIR` |
 | Inside `(main)`: stats / help / quit | `.stats` / `.help` / `.quit` |
 | Inside `(main)`: view / change model caps | `.config` / `.set max-cooccur 200000` |

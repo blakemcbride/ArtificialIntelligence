@@ -823,6 +823,53 @@
       (check "save/load restores read-max-mb" (eql *read-max-mb* 7)))
     (ignore-errors (delete-file kb)))
 
+  (format t "~%Per-learner toggle tests~%")
+  (reset)
+  (let ((*read-cooccur* nil))                            ; drop the O(n^2) learner
+    (process-sentence (tokenize "a cat is an animal") nil)
+    (check "read-cooccur off skips the co-occurrence learner" (zerop (hash-table-count *cooccur*)))
+    (check "other learners still run with read-cooccur off"   (plusp (hash-table-count *transitions*))))
+  (reset)
+  (let ((*read-transitions-p* nil))
+    (process-sentence (tokenize "a cat is an animal") nil)
+    (check "read-transitions off skips the transition learner" (zerop (hash-table-count *transitions*))))
+
+  (format t "~%Count-store merge (shard combine) tests~%")
+  (flet ((nt (tab) (let ((s 0)) (maphash (lambda (k v) (declare (ignore k))
+                                           (maphash (lambda (a b) (declare (ignore a)) (incf s b)) v)) tab) s)))
+    (reset)
+    (let ((*read-extract* nil) (txt "a cat is an animal. a dog runs fast. a cat is a mammal.")
+          (kb "merge-temp.kb"))
+      (read-text txt :verbose nil)
+      (let ((co1 (nt *cooccur*)) (f1 (hash-table-count *facts*)))
+        (save-network kb)
+        (reset) (setf *read-extract* nil)               ; fresh model with the SAME text...
+        (read-text txt :verbose nil)
+        (merge-kb kb)                                    ; ...then merge the saved shard in
+        (check "merge-kb sums co-occurrence counts" (= (nt *cooccur*) (* 2 co1)))
+        (check "merge-kb keeps the same fact keys (additive strength)"
+               (= (hash-table-count *facts*) f1)))
+      (ignore-errors (delete-file kb))))
+
+  #+(and sbcl sb-thread)
+  (progn
+    (format t "~%Parallel bulk-read tests (SBCL)~%")
+    (flet ((nt (tab) (let ((s 0)) (maphash (lambda (k v) (declare (ignore k))
+                                             (maphash (lambda (a b) (declare (ignore a)) (incf s b)) v)) tab) s)))
+      (let ((tmp "par-temp.txt"))
+        (with-open-file (s tmp :direction :output :if-exists :supersede :if-does-not-exist :create)
+          (dotimes (i 3000)
+            (format s "a cat is an animal. a dog runs fast. paris is the capital of france.~%")))
+        (reset) (setf *read-extract* nil *read-workers* 1)   ; sequential baseline
+        (read-text-file tmp :verbose nil)
+        (let ((seq-co (nt *cooccur*)) (seq-tr (nt *transitions*)))
+          (reset) (rewind-file tmp) (setf *read-extract* nil *read-workers* 4)   ; 4 workers
+          (read-text-file tmp :verbose nil)
+          (setf *read-workers* 1)                            ; restore default
+          (check "parallel read yields identical co-occurrence totals" (= (nt *cooccur*) seq-co))
+          (check "parallel read yields identical transition totals"    (= (nt *transitions*) seq-tr)))
+        (ignore-errors (delete-file tmp)))))
+
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")
   (reset)

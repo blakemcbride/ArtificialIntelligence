@@ -2,7 +2,8 @@
 (defpackage "persist"
   (:use "COMMON-LISP")
   (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*" "SYSTEM-STATS"
-	   "*TUNABLE-PROVIDER*" "*TUNABLE-RESTORER*"))
+	   "*TUNABLE-PROVIDER*" "*TUNABLE-RESTORER*"
+	   "MERGE-KB" "MERGE-WORKER-STORES"))
 
 (in-package "persist")
 (provide "persist")
@@ -264,6 +265,76 @@
   "Replace the current knowledge base with the one stored at PATH.  T if loaded, NIL if
    the file is missing."
   (load-network path))
+
+;;; --- Merging additive count stores (shard combine) -------------------------------
+;;; The bulk-read learners are all COUNTERS, so two models trained on disjoint text can be
+;;; combined exactly by summing counts.  This is the foundation of both parallel (in-thread)
+;;; and multi-process (separate .kb) sharding.  The neuron graph / concept graph / associations
+;;; are NOT additive (shared, id-keyed structure), so they are deliberately NOT merged --
+;;; only the statistical stores (co-occurrence, transitions, sentence-starts, facts, relations).
+
+(defun merge-flat! (dest src)
+  "Add SRC (key -> number) into DEST."
+  (maphash (lambda (k v) (incf (gethash k dest 0) v)) src))
+
+(defun merge-nested! (dest src)
+  "Add SRC (key -> (key2 -> number)) into DEST, creating inner tables as needed."
+  (maphash (lambda (k inner)
+	     (let ((d (or (gethash k dest)
+			  (setf (gethash k dest) (make-hash-table :test 'equal)))))
+	       (maphash (lambda (k2 v) (incf (gethash k2 d 0) v)) inner)))
+	   src))
+
+(defun merge-rel-links! (dest src)
+  "Union SRC (connector -> (key -> (subj . cat))) into DEST."
+  (maphash (lambda (conn tab)
+	     (let ((d (or (gethash conn dest)
+			  (setf (gethash conn dest) (make-hash-table :test 'equal)))))
+	       (maphash (lambda (k pair) (setf (gethash k d) pair)) tab)))
+	   src))
+
+(defun merge-worker-stores (result)
+  "Merge one parallel worker's private stores into the globals.  RESULT is the list
+   (cooccur transitions sentence-starts facts rel-links rel-head rel-freq rel-sentences)."
+  (destructuring-bind (cooccur transitions starts facts rel-links rel-head rel-freq rel-sents)
+      result
+    (merge-nested!   *cooccur*         cooccur)
+    (merge-nested!   *transitions*     transitions)
+    (merge-flat!     *sentence-starts* starts)
+    (merge-flat!     *facts*           facts)
+    (merge-rel-links! *rel-links*      rel-links)
+    (merge-flat!     *rel-head*        rel-head)
+    (merge-flat!     *rel-freq*        rel-freq)
+    (incf *rel-sentences* rel-sents)))
+
+(defun merge-kb (path)
+  "Merge the additive count stores from the .kb at PATH into the CURRENT model (does NOT reset).
+   Sums co-occurrence, transitions, sentence-starts, facts, and the relation stores; the neuron
+   graph / concept graph / associations are left untouched (they are not additive).  Use this to
+   combine shards produced by parallel or multi-process bulk reads.  T if merged, NIL if missing."
+  (let ((data (and (probe-file path)
+		   (with-open-file (s path :direction :input)
+		     (with-standard-io-syntax (read s))))))
+    (when data
+      (dolist (pair (getf data :cooccur))           ; nested counts
+	(let ((d (or (gethash (car pair) *cooccur*)
+		     (setf (gethash (car pair) *cooccur*) (make-hash-table :test 'equal)))))
+	  (dolist (oc (cdr pair)) (incf (gethash (car oc) d 0) (cdr oc)))))
+      (dolist (pair (getf data :transitions))
+	(let ((d (or (gethash (car pair) *transitions*)
+		     (setf (gethash (car pair) *transitions*) (make-hash-table :test 'equal)))))
+	  (dolist (nc (cdr pair)) (incf (gethash (car nc) d 0) (cdr nc)))))
+      (dolist (p (getf data :sentence-starts)) (incf (gethash (car p) *sentence-starts* 0) (cdr p)))
+      (dolist (p (getf data :facts))           (incf (gethash (car p) *facts* 0) (cdr p)))
+      (dolist (p (getf data :rel-head))        (incf (gethash (car p) *rel-head* 0) (cdr p)))
+      (dolist (p (getf data :rel-freq))        (incf (gethash (car p) *rel-freq* 0) (cdr p)))
+      (dolist (pair (getf data :rel-links))    ; union of (subj . cat) pairs per connector
+	(let ((d (or (gethash (car pair) *rel-links*)
+		     (setf (gethash (car pair) *rel-links*) (make-hash-table :test 'equal)))))
+	  (dolist (ab (cdr pair)) (setf (gethash (format nil "~a|~a" (car ab) (cdr ab)) d) ab))))
+      (incf *rel-sentences* (or (getf data :rel-sentences) 0))
+      (clrhash *vcache*) (setf *vec-mean* nil)     ; derived vectors invalidated
+      t)))
 
 ;;; --- System stats ----------------------------------------------------------------
 (defun system-stats ()
