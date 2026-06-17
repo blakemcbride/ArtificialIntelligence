@@ -1,5 +1,13 @@
 # Artificial Intelligence
 
+> **Note (project status).** This was a research project, and a great deal was learned from it
+> — about continual learning, Hebbian vs. backpropagation, why trained models can't keep
+> learning, and how a learning *memory* can beat plain RAG. The most practical place to apply
+> those findings turned out to be a separate, deployable system, so the lessons have been
+> carried over to the **OwnSona** project: https://github.com/blakemcbride/Ownsona. This
+> repository remains as the research lab and the record of what was learned (see
+> [`SystemAnalysis.md`](SystemAnalysis.md) and [`OwnSona.md`](OwnSona.md)).
+
 This is an experimental **LLM (large language model) design** — an attempt at a
 fundamentally different kind of language-learning AI, built to pursue two goals that
 today's mainstream LLMs do **not** meet:
