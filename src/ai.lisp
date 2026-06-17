@@ -82,6 +82,20 @@
     ("prune-every"     . *prune-every*))
   "Live-tunable parameters, exposed by .config / .set (name -> special variable).")
 
+(defun tunables->alist ()
+  "Snapshot the .set parameters as an alist of (name . value), for saving in a .kb."
+  (mapcar (lambda (tn) (cons (car tn) (symbol-value (cdr tn)))) *tunables*))
+
+(defun restore-tunables (alist)
+  "Apply an (name . value) alist read back from a .kb to the live tunable variables."
+  (dolist (pair alist)
+    (let ((tn (assoc (car pair) *tunables* :test #'string=)))
+      (when tn (setf (symbol-value (cdr tn)) (cdr pair))))))
+
+;; Let persist (a separate package) save/restore the tunables that live out here.
+(setf *tunable-provider* #'tunables->alist
+      *tunable-restorer*  #'restore-tunables)
+
 ;;; --- pruning (keep only the strongest entries when a store is over its cap) ------------
 (defun prune-flat (table cap)
   "Keep only the CAP highest-valued entries of TABLE (key -> number)."

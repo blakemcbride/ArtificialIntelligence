@@ -811,6 +811,18 @@
            (> (nth-value 0 (read-text-file tmp :verbose nil)) 0))
     (ignore-errors (delete-file tmp)))
 
+  (format t "~%Tunable (.set parameter) persistence tests~%")
+  (reset)
+  (let ((kb "tunables-temp.kb")
+        (*max-cooccur* 4242) (*read-extract* nil) (*read-max-mb* 7))
+    (save-network kb)                                  ; save with non-default tunables
+    (let ((*max-cooccur* nil) (*read-extract* t) (*read-max-mb* nil))  ; clobber to defaults
+      (load-network kb)                                ; .load restores the saved settings
+      (check "save/load restores a numeric tunable (max-cooccur)" (eql *max-cooccur* 4242))
+      (check "save/load restores a boolean tunable (read-extract off)" (null *read-extract*))
+      (check "save/load restores read-max-mb" (eql *read-max-mb* 7)))
+    (ignore-errors (delete-file kb)))
+
   ;; ===================== Phase 9 -- Learned relation discovery =====================
   (format t "~%Phase 9 (learned relations) tests~%")
   (reset)

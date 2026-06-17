@@ -187,6 +187,8 @@ store exceeds its cap it is pruned to its strongest entries, so the model stays 
 memory no matter how much you read. (`.rewind FILE` starts that file over from the beginning.)
 
 A robust slice-at-a-time loop: `.read` → `.save` → repeat, so a crash never costs a whole pass.
+The `.set` settings (the caps and `read-extract`) are **saved in the `.kb`** and re-applied on
+`.load`, so you set them once and they travel with the knowledge base across sessions.
 
 **Heap size matters too.** SBCL's default Lisp heap is small (~1 GB). For large ingestion start
 it with a bigger heap, e.g. `sbcl --dynamic-space-size 16384` (16 GB). The caps bound the

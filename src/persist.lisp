@@ -1,7 +1,8 @@
 
 (defpackage "persist"
   (:use "COMMON-LISP")
-  (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*" "SYSTEM-STATS"))
+  (:export "SAVE-NETWORK" "LOAD-NETWORK" "EXPORT-KB" "IMPORT-KB" "*SAVE-FILE*" "SYSTEM-STATS"
+	   "*TUNABLE-PROVIDER*" "*TUNABLE-RESTORER*"))
 
 (in-package "persist")
 (provide "persist")
@@ -20,6 +21,13 @@
 
 (defparameter *save-file* "auto-save.kb"
   "Default file the teaching loop loads on startup and saves on exit.")
+
+;; The .set tunables (model caps etc.) live in the package-less top level (ai.lisp), so
+;; persist can't name them directly.  ai.lisp installs these hooks: the provider returns an
+;; alist of (name . value) to write into the .kb; the restorer applies a read-back alist.
+;; When unset (e.g. persist loaded standalone) save/load simply omit the tunables.
+(defparameter *tunable-provider* nil "() -> alist of (name . value), or NIL.")
+(defparameter *tunable-restorer* nil "(alist) -> apply restored tunables, or NIL.")
 
 (defun dendrite->list (d)
   (list (neuron-id (dendrite-neuron d))
@@ -147,7 +155,8 @@
 		   :rel-head (hash->plain-alist *rel-head*)
 		   :rel-freq (hash->plain-alist *rel-freq*)
 		   :rel-sentences *rel-sentences*
-		   :read-offsets (hash->plain-alist *read-offsets*))
+		   :read-offsets (hash->plain-alist *read-offsets*)
+		   :tunables (and *tunable-provider* (funcall *tunable-provider*)))
 	     s)
       (terpri s)))
   path)
@@ -226,6 +235,8 @@
     (dolist (p (getf data :rel-freq)) (setf (gethash (car p) *rel-freq*) (cdr p)))
     (setf *rel-sentences* (or (getf data :rel-sentences) 0))
     (dolist (p (getf data :read-offsets)) (setf (gethash (car p) *read-offsets*) (cdr p)))
+    (when (and *tunable-restorer* (getf data :tunables))   ; restore the .set parameters saved with this KB
+      (funcall *tunable-restorer* (getf data :tunables)))
     ;; *associations* = every :association dendrite, recollected from the rebuilt axons
     (dolist (rec (getf data :neurons))
       (dolist (d (neuron-axon (gethash (first rec) by-id)))
